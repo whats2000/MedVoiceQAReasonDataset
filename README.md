@@ -40,7 +40,19 @@ flowchart LR
 ```bash
 git clone https://github.com/whats2000/MedVoiceQAReasonDataset.git
 cd MedVoiceQAReasonDataset
-export UV_CACHE_DIR="$HOME/.cache/uv_wheels"
+$env:UV_CACHE_DIR="$env:USERPROFILE\\.cache\\uv_wheels"
+New-Item -ItemType Directory -Force -Path $env:UV_CACHE_DIR | Out-Null
+# make it permanent for future terminals
+setx UV_CACHE_DIR "$env:UV_CACHE_DIR"
+
+# 1 – create a venv named .venv  (you can choose any folder name)
+uv venv .venv                   # this is a one-time step
+
+# 2 – activate it
+.\.venv\Scripts\Activate.ps1
+
+# 3 – install the project in editable mode
+uv pip install -e .
 ```
 
 ### 2 · Prepare secrets

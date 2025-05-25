@@ -1,0 +1,133 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medvoice-qa-reason-dataset"
+version = "0.1.0"
+description = "Transform VQA-RAD into a multi-modal, explainable medical-QA mini-corpus (speech + bounding box + reasoning)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "MedVoiceQA Team", email = "team@medvoiceqa.org" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+requires-python = ">=3.9"
+dependencies = [
+    # LLM orchestration
+    "langchain>=0.0.280",
+    "langgraph>=0.0.40",  # Use compatible version
+    "openai>=0.27.0",
+    # Google Gen AI SDK (replaces the old google-generativeai)
+    "google-genai>=0.1.0",
+
+    # Data processing
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "Pillow>=10.3.0",
+    "opencv-python>=4.8.0",    
+    # Audio synthesis & recognition
+    "bark<=0.1.5",  # Use available version
+    "openai-whisper>=20231117",
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+    # Medical image handling
+    "pydicom>=2.4.0",
+    "SimpleITK>=2.3.0",
+    # HTTP & config
+    "httpx>=0.24.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+    # CLI & UX
+    "typer>=0.9.0",
+    "rich>=13.7.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.9.0",
+    "isort>=5.12.0",
+    "flake8>=6.1.0",
+    "mypy>=1.6.0",
+    "pre-commit>=3.5.0",
+]
+jupyter = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.25.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+]
+
+[project.scripts]
+medvoice-pipeline = "pipeline.run_pipeline:main"
+
+[project.urls]
+Homepage = "https://github.com/whats2000/MedVoiceQAReasonDataset"
+Repository = "https://github.com/whats2000/MedVoiceQAReasonDataset"
+Issues = "https://github.com/whats2000/MedVoiceQAReasonDataset/issues"
+
+[tool.setuptools]
+packages = ["pipeline", "nodes", "data"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "smoke: Smoke tests with limited samples",
+]
