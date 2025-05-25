@@ -1,0 +1,149 @@
+# MedVoiceQAReasonDataset
+
+Transform VQA‑RAD into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
+
+---
+
+## ⭐️ What’s inside?
+
+| Modality        | Fields                             | Source models/tools                       |
+| --------------- | ---------------------------------- | ----------------------------------------- |
+| **Image**       | `image` (PNG)                      | VQA‑RAD DICOM → PNG via **dicom2png**     |
+| **Speech**      | `speech_input` (WAV) · `asr_text`  | **Bark** (TTS) → **Na0s Whisper‑L** (ASR) |
+| **Visual loc.** | `visual_box`                       | **Gemini 2 Flash** Vision (bbox‑only)     |
+| **Reasoning**   | `text_explanation` · `uncertainty` | **Gemini 2 Flash** Language               |
+| **QA flag**     | `needs_review` · `critic_notes`    | Gemini validation duo                     |
+
+> **Size:** 300 samples covering CT/MRI/X‑ray, stratified by modality & question type.
+
+---
+
+## 🗺️ Pipeline (LangGraph)
+
+```mermaid
+flowchart LR
+    Loader --> Segmentation
+    Segmentation --> ASR_TTS
+    ASR_TTS --> Explanation
+    Explanation --> Validation
+    Validation -- needs_review = true --> Human_Review
+```
+
+*Each rectangle is a **Node** run by **LangGraph**; edges carry a single JSON blob.*
+
+---
+
+## 🚀 Quick Start
+
+### 1 · Clone & set wheel cache
+
+```bash
+git clone https://github.com/whats2000/MedVoiceQAReasonDataset.git
+cd MedVoiceQAReasonDataset
+export UV_CACHE_DIR="$HOME/.cache/uv_wheels"
+```
+
+### 2 · Prepare secrets
+
+Create an `.env` file with your Gemini & Hugging Face keys (see `env.sample`).
+
+### 3 · Dry‑run on 50 samples
+
+```bash
+python run_pipeline.py --limit 50
+```
+
+### 4 · Full 300‑sample run
+
+```bash
+python run_pipeline.py
+```
+
+Outputs land in `runs/<timestamp>-<hash>/` with `manifest.json` for reproducibility.
+
+---
+
+## 🏗️ Repo layout
+
+```
+.
+├── pipeline/          # Python graph definition (LangGraph API)
+│   └── run_pipeline.py
+├── nodes/             # one folder per Node (Loader, Segmentation, …)
+├── data/              # sampling scripts & raw VQA‑RAD index
+├── registry.json      # lists every Node impl, version, resources
+├── runs/              # immutable artefacts  (git‑ignored)
+└── README.md          # this file
+```
+
+---
+
+## ⚙️ Node Registry & Hot‑Swap
+
+* **registry.json** – declares every Node implementation, its semantic version, resource tags, maintainer.
+* To swap a model:
+
+  1. Add / update entry in `registry.json`.
+  2. Point `run_pipeline.py` to the new `node_version`.
+  3. Run CI (unit tests, 10‑sample smoke test, metric‑drift guard ±5 %).
+
+No YAML involved—configuration is pure **Python + JSON**, making edits IDE‑friendly.
+
+---
+
+## 📝 Node Contracts
+
+| Node         | Consumes                                 | Produces                                          |
+| ------------ | ---------------------------------------- | ------------------------------------------------- |
+| Loader       | `sample_id`                              | `image_path`, `text_query`                        |
+| Segmentation | `image_path`, `text_query`               | `visual_box`                                      |
+| ASR / TTS    | `text_query`                             | `speech_path`, `asr_text`, `speech_quality_score` |
+| Explanation  | `image_path`, `text_query`, `visual_box` | `text_explanation`, `uncertainty`                 |
+| Validation   | *all prior keys*                         | `needs_review`, `critic_notes`                    |
+
+Each Node appends `node_name` and `node_version` for full provenance.
+
+---
+
+## 🎯 Quality Targets
+
+| Field              | Metric                   | Pass       |
+| ------------------ | ------------------------ | ---------- |
+| `visual_box`       | IoU vs. RSNA / human box | **> 0.50** |
+| `text_explanation` | BERTScore F1             | **> 0.85** |
+| Consistency        | 5× self‑consistency      | **≥ 80 %** |
+| Overall            | `needs_review = false`   | **≥ 80 %** |
+
+Failing samples enter the `Human_Review` branch for manual triage.
+
+---
+
+## 🔄 Update Models in Five Steps
+
+1. Train or fine‑tune the new model.
+2. Wrap it to match the Node I/O JSON schema.
+3. Register version in `registry.json`.
+4. Edit `run_pipeline.py` to use the new version.
+5. Re‑run tests; if metrics pass → merge.
+
+---
+
+## 📜 License & Citation
+
+* Code: MIT
+* Derived data: CC‑BY 4.0  (VQA‑RAD is CC0 1.0; please cite their paper.)
+
+```bibtex
+@dataset{medvoiceqa_2025,
+  title   = {MedVoiceQAReasonDataset},
+  year    = {2025},
+  url     = {https://github.com/whats2000/MedVoiceQAReasonDataset}
+}
+```
+
+---
+
+## ✨ Acknowledgements
+
+* VQA‑RAD authors for the base dataset.
+* Open‑source medical‑AI community for Whisper‑L, Bark, LangGraph, and Gemini credits.
