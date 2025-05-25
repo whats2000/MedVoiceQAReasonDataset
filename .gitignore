@@ -2,3 +2,4 @@
 /.venv
 /medvoice_qa_reason_dataset.egg-info
 *.pyc
+*.log

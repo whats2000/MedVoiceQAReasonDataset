@@ -35,7 +35,7 @@ def test_pipeline():
         
         # Create pipeline
         pipeline = create_medvoice_pipeline()
-        compiled_pipeline = pipeline.compile()
+        compiled_pipeline = pipeline
         
         logger.info("Pipeline created successfully!")
         
