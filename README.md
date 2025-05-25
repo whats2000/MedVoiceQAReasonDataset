@@ -7,7 +7,7 @@ Transform VQA‑RAD into a multi‑modal, explainable medical‑QA mini‑corpus
 ## ⭐️ What’s inside?
 
 | Modality        | Fields                             | Source models/tools                       |
-| --------------- | ---------------------------------- | ----------------------------------------- |
+|-----------------|------------------------------------|-------------------------------------------|
 | **Image**       | `image` (PNG)                      | VQA‑RAD DICOM → PNG via **dicom2png**     |
 | **Speech**      | `speech_input` (WAV) · `asr_text`  | **Bark** (TTS) → **Na0s Whisper‑L** (ASR) |
 | **Visual loc.** | `visual_box`                       | **Gemini 2 Flash** Vision (bbox‑only)     |
@@ -35,24 +35,14 @@ flowchart LR
 
 ## 🚀 Quick Start
 
-### 1 · Clone & set wheel cache
+### 1 · Clone & install with uv
 
 ```bash
 git clone https://github.com/whats2000/MedVoiceQAReasonDataset.git
 cd MedVoiceQAReasonDataset
-$env:UV_CACHE_DIR="$env:USERPROFILE\\.cache\\uv_wheels"
-New-Item -ItemType Directory -Force -Path $env:UV_CACHE_DIR | Out-Null
-# make it permanent for future terminals
-setx UV_CACHE_DIR "$env:UV_CACHE_DIR"
 
-# 1 – create a venv named .venv  (you can choose any folder name)
-uv venv .venv                   # this is a one-time step
-
-# 2 – activate it
-.\.venv\Scripts\Activate.ps1
-
-# 3 – install the project in editable mode
-uv pip install -e .
+# Install with uv (automatically creates virtual environment)
+uv sync
 ```
 
 ### 2 · Prepare secrets
@@ -62,13 +52,23 @@ Create an `.env` file with your Gemini & Hugging Face keys (see `env.sample`).
 ### 3 · Dry‑run on 50 samples
 
 ```bash
-python run_pipeline.py --limit 50
+uv run python pipeline/run_pipeline.py --limit 50
 ```
 
 ### 4 · Full 300‑sample run
 
 ```bash
-python run_pipeline.py
+uv run python pipeline/run_pipeline.py
+```
+
+### 5 · Run tests
+
+```bash
+# Run pipeline tests
+uv run python tests/test_pipeline.py
+
+# Or run with pytest if available
+uv run pytest tests/
 ```
 
 Outputs land in `runs/<timestamp>-<hash>/` with `manifest.json` for reproducibility.
@@ -120,11 +120,11 @@ Each Node appends `node_name` and `node_version` for full provenance.
 ## 🎯 Quality Targets
 
 | Field              | Metric                   | Pass       |
-| ------------------ | ------------------------ | ---------- |
+|--------------------|--------------------------|------------|
 | `visual_box`       | IoU vs. RSNA / human box | **> 0.50** |
 | `text_explanation` | BERTScore F1             | **> 0.85** |
-| Consistency        | 5× self‑consistency      | **≥ 80 %** |
-| Overall            | `needs_review = false`   | **≥ 80 %** |
+| Consistency        | 5× self‑consistency      | **≥ 80%**  |
+| Overall            | `needs_review = false`   | **≥ 80%**  |
 
 Failing samples enter the `Human_Review` branch for manual triage.
 

@@ -31,16 +31,14 @@ dependencies = [
     "openai>=1.0.0",
     # Google Gen AI SDK (replaces the old google-generativeai)
     "google-genai>=1.0.0",
-
     # Data processing
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "Pillow>=10.3.0",
-    "opencv-python>=4.8.0",    
+    "opencv-python>=4.8.0",
     # Audio synthesis & recognition
-    "bark<=0.1.5",  # Use available version
+    "bark<=0.1.5",
     "openai-whisper>=20231117",
-    "torch>=2.1.0",
     "torchaudio>=2.1.0",
     # Medical image handling
     "pydicom>=2.4.0",
@@ -51,7 +49,9 @@ dependencies = [
     "pydantic>=2.5.0",
     # CLI & UX
     "typer>=0.9.0",
-    "rich>=13.7.0"
+    "rich>=13.7.0",
+    "torch>=2.7.0",
+    "torchvision>=0.22.0",
 ]
 
 [project.optional-dependencies]
