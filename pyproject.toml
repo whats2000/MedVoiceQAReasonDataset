@@ -25,11 +25,12 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     # LLM orchestration
-    "langchain>=0.0.280",
-    "langgraph>=0.0.40",  # Use compatible version
-    "openai>=0.27.0",
+    "langchain[google-genai]>=0.3.0",
+    "langgraph==0.4.5",
+    "langsmith==0.3.42",
+    "openai>=1.0.0",
     # Google Gen AI SDK (replaces the old google-generativeai)
-    "google-genai>=0.1.0",
+    "google-genai>=1.0.0",
 
     # Data processing
     "pandas>=2.0.0",
