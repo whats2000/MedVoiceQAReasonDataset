@@ -1,6 +1,6 @@
 # MedVoiceQAReasonDataset
 
-Transform VQA‑RAD into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
+Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
 
 ---
 

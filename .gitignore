@@ -3,3 +3,7 @@
 /medvoice_qa_reason_dataset.egg-info
 *.pyc
 *.log
+/data/vqarad_hf
+.env
+/runs
+/.vscode

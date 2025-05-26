@@ -1,7 +1,7 @@
 """
 VQA-RAD Loader Node
 
-Loads VQA-RAD samples and converts DICOM images to PNG format if needed.
+Loads VQA-RAD samples from Hugging Face dataset and converts DICOM images to PNG format if needed.
 Follows the node contract: consumes sample_id, produces image_path, text_query, metadata.
 """
 
@@ -15,29 +15,41 @@ import SimpleITK as sitk
 from PIL import Image
 import numpy as np
 
+from data.huggingface_loader import HuggingFaceVQARADLoader
+
 logger = logging.getLogger(__name__)
 
 
 class VQARADLoader:
     """
     VQA-RAD dataset loader with DICOM to PNG conversion capability.
+    Uses Hugging Face VQA-RAD dataset as the primary data source.
     """
     
-    def __init__(self, data_path: str = "data/vqarad", output_dir: str = "runs/current"):
+    def __init__(self, data_path: str = "data/vqarad", output_dir: str = "runs/current", use_huggingface: bool = True):
         """
         Initialize the loader.
         
         Args:
-            data_path: Path to VQA-RAD dataset
+            data_path: Path to VQA-RAD dataset (for local files)
             output_dir: Output directory for converted images
+            use_huggingface: Whether to use Hugging Face dataset (default: True)
         """
         self.data_path = Path(data_path)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.use_huggingface = use_huggingface
         
         # Create images output directory
         self.images_output_dir = self.output_dir / "images"
         self.images_output_dir.mkdir(exist_ok=True)
+        
+        # Initialize Hugging Face loader if enabled
+        if self.use_huggingface:
+            self.hf_loader = HuggingFaceVQARADLoader(
+                cache_dir=str(self.data_path / "hf_cache"),
+                output_dir=str(self.output_dir / "hf_data")
+            )
     
     def load_sample(
         self, 
@@ -72,11 +84,32 @@ class VQARADLoader:
                     "metadata": metadata or {}
                 }
             
-            # Otherwise, try to load from VQA-RAD dataset
-            logger.info(f"Loading sample {sample_id} from VQA-RAD dataset")
+            # Try to load from Hugging Face dataset first
+            if self.use_huggingface:
+                logger.info(f"Loading sample {sample_id} from Hugging Face VQA-RAD dataset")
+                try:
+                    hf_sample = self.hf_loader.get_sample_by_id(sample_id)
+                    
+                    # Process the image to ensure correct format
+                    processed_image_path = self._process_image(hf_sample["image_path"], sample_id)
+                    
+                    return {
+                        "image_path": str(processed_image_path),
+                        "text_query": hf_sample["question"],
+                        "metadata": {
+                            **hf_sample["metadata"],
+                            **(metadata or {}),
+                            "ground_truth_answer": hf_sample["answer"],
+                            "question_type": hf_sample["question_type"],
+                            "modality": hf_sample["modality"]
+                        }
+                    }
+                except Exception as e:
+                    logger.warning(f"Failed to load from Hugging Face dataset: {e}")
+                    logger.info("Falling back to local dataset or mock data")
             
-            # This would load from actual VQA-RAD files
-            # For now, we'll work with the provided test data structure
+            # Otherwise, try to load from local VQA-RAD dataset
+            logger.info(f"Loading sample {sample_id} from local VQA-RAD dataset")
             sample_data = self._load_from_dataset(sample_id)
             
             return sample_data
