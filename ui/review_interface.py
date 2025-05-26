@@ -119,32 +119,53 @@ class MedVoiceQAReviewer:
         
         # Create columns for layout
         col1, col2 = st.columns([2, 1])
-        
         with col1:
             # Display image if available
             image_path = output_data.get("image_path")
-            if image_path and Path(image_path).exists():
-                try:
-                    image = Image.open(image_path)
-                    st.image(image, caption=f"Medical Image - {sample_id}", use_column_width=True)
+            if image_path:
+                # Convert to absolute path if relative
+                if not Path(image_path).is_absolute():
+                    image_path = Path.cwd() / image_path
+                else:
+                    image_path = Path(image_path)
                     
-                    # Show bounding box if available
-                    visual_box = output_data.get("visual_box")
-                    if visual_box:
-                        st.json(visual_box, expanded=False)
+                if image_path.exists():
+                    try:
+                        image = Image.open(image_path)
+                        st.image(image, caption=f"Medical Image - {sample_id}", use_column_width=True)
                         
-                except Exception as e:
-                    st.error(f"Error loading image: {e}")
+                        # Show bounding box if available
+                        visual_box = output_data.get("visual_box")
+                        if visual_box:
+                            st.json(visual_box, expanded=False)
+                            
+                    except Exception as e:
+                        st.error(f"Error loading image: {e}")
+                else:
+                    st.error(f"Image not found: {image_path}")
+            else:
+                st.info("No image available for this sample")
             
             # Audio player for speech
             speech_path = output_data.get("speech_path")
-            if speech_path and Path(speech_path).exists():
-                try:
-                    with open(speech_path, "rb") as audio_file:
-                        audio_bytes = audio_file.read()
-                    st.audio(audio_bytes, format="audio/wav")
-                except Exception as e:
-                    st.error(f"Error loading audio: {e}")
+            if speech_path:
+                # Convert to absolute path if relative
+                if not Path(speech_path).is_absolute():
+                    speech_path = Path.cwd() / speech_path
+                else:
+                    speech_path = Path(speech_path)
+                    
+                if speech_path.exists():
+                    try:
+                        with open(speech_path, "rb") as audio_file:
+                            audio_bytes = audio_file.read()
+                        st.audio(audio_bytes, format="audio/wav")
+                    except Exception as e:
+                        st.error(f"Error loading audio: {e}")
+                else:
+                    st.error(f"Audio not found: {speech_path}")
+            else:
+                st.info("No audio available for this sample")
         
         with col2:
             # Sample metadata
@@ -282,8 +303,11 @@ def main():
     st.title("🏥 MedVoiceQA Human Verification Interface")
     st.markdown("Review and validate processed samples from the MedVoiceQA pipeline")
     
-    # Initialize reviewer
-    reviewer = MedVoiceQAReviewer()
+    # Initialize reviewer with session state persistence
+    if "reviewer" not in st.session_state:
+        st.session_state.reviewer = MedVoiceQAReviewer()
+    
+    reviewer = st.session_state.reviewer
     
     # Sidebar for run selection and controls
     with st.sidebar:
@@ -307,10 +331,14 @@ def main():
         available_runs.sort(reverse=True)  # Most recent first
         
         if available_runs:
-            selected_run = st.selectbox("Available Runs", available_runs)
+            # Show current loaded run if any
+            current_selection = reviewer.current_run if reviewer.current_run else available_runs[0]
+            selected_run = st.selectbox("Available Runs", available_runs, 
+                                      index=available_runs.index(current_selection) if current_selection in available_runs else 0)
             
             if st.button("Load Run Data"):
                 if reviewer.load_run_data(selected_run):
+                    st.session_state.reviewer = reviewer  # Update session state
                     st.success(f"Loaded data from run: {selected_run}")
                     st.rerun()
         else:
@@ -356,11 +384,15 @@ def main():
                     file_name=f"medvoiceqa_review_{reviewer.current_run}.json",
                     mime="application/json"
                 )
-    
-    # Main content area
+      # Main content area
     if not reviewer.samples_data:
         st.info("Please select and load a pipeline run from the sidebar to begin reviewing.")
+        if reviewer.current_run:
+            st.warning(f"Current run: {reviewer.current_run} - but no samples loaded. Check the results.json file.")
         st.stop()
+    
+    # Debug information
+    st.success(f"✅ Loaded {len(reviewer.samples_data)} samples from run: {reviewer.current_run}")
     
     # Filtering and sorting options
     st.subheader("Filter and Sort Options")
