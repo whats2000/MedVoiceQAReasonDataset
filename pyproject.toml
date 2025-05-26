@@ -41,6 +41,8 @@ dependencies = [
     # Audio synthesis & recognition
     "bark<=0.1.5",
     "openai-whisper>=20231117",
+    "transformers>=4.48",
+    "sentencepiece",
     # Medical image handling
     "pydicom>=2.4.0",
     "simpleitk>=2.5.0",
@@ -54,6 +56,7 @@ dependencies = [
     # Testing
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
+    "soundfile>=0.13.1",
 ]
 
 [project.optional-dependencies]
