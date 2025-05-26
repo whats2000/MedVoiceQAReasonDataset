@@ -60,31 +60,34 @@ uv sync --extra cu128
 
 ### 2 · Prepare secrets
 
-Create an `.env` file with your Gemini & Hugging Face keys (see `env.sample`).
+Create an `.env` file with your Gemini & Hugging Face keys (see [.env.example](.env.example)):
 
-### 3 · Dry‑run on 50 samples
+### 3. Download VQA‑RAD index
+
+```bash
+uv run .\data\huggingface_loader.py
+```
+
+### 4 · Verify installation
+
+```bash
+uv run pytest
+```
+
+Outputs land in `runs/<timestamp>-<hash>/` with `manifest.json` for reproducibility.
+
+
+### 5 · Dry‑run on 50 samples
 
 ```bash
 uv run python pipeline/run_pipeline.py --limit 50
 ```
 
-### 4 · Full 300‑sample run
+### 6 · Full 300‑sample run
 
 ```bash
 uv run python pipeline/run_pipeline.py
 ```
-
-### 5 · Run tests
-
-```bash
-# Run pipeline tests
-uv run python tests/test_pipeline.py
-
-# Or run with pytest if available
-uv run pytest tests/
-```
-
-Outputs land in `runs/<timestamp>-<hash>/` with `manifest.json` for reproducibility.
 
 ---
 
