@@ -132,7 +132,7 @@ class MedVoiceQAReviewer:
                 if image_path.exists():
                     try:
                         image = Image.open(image_path)
-                        st.image(image, caption=f"Medical Image - {sample_id}", use_column_width=True)
+                        st.image(image, caption=f"Medical Image - {sample_id}", use_container_width=True)
                         
                         # Show bounding box if available
                         visual_box = output_data.get("visual_box")
