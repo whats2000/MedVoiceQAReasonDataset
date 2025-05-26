@@ -1,7 +1,7 @@
 """
 MedVoiceQA Reasoning Dataset Pipeline Runner
 
-Main entry point for running the LangGraph-based pipeline that transforms
+The Main entry point for running the LangGraph-based pipeline that transforms
 VQA-RAD samples into multi-modal, explainable medical QA data.
 """
 
@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -73,9 +74,8 @@ def save_manifest(run_dir: Path, config: Dict[str, Any], results: Dict[str, Any]
     manifest = {
         "timestamp": datetime.now().isoformat(),
         "config": config,
-        "results": results,
-        "environment": {
-            "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+        "results": results,        "environment": {
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": os.name,
             "working_directory": str(Path.cwd()),
         },
@@ -145,7 +145,7 @@ def run_pipeline(
         "run_directory": str(run_dir),
     }
 
-    # If dry run, just validate and exit
+    # If dry runs, just validate and exit
     if dry_run:
         console.print("[yellow]Dry run mode - validating setup only[/yellow]")
         results = {"status": "dry_run", "validation": env_checks}
@@ -195,7 +195,7 @@ def run_pipeline(
 
             for i in range(sample_limit):
                 try:
-                    sample = hf_loader.get_sample(i)
+                    sample = hf_loader.get_sample_by_index(i)
                     if sample:
                         all_samples.append(sample)
                     else:
@@ -221,7 +221,7 @@ def run_pipeline(
 
         console.print(f"[green]Processing {len(samples)} samples[/green]")
 
-        # Create and run pipeline
+        # Create and run the pipeline
         pipeline = create_medvoice_pipeline()
 
         processed_samples = []
