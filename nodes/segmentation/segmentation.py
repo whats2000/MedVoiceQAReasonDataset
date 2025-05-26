@@ -9,13 +9,29 @@ import base64
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from PIL import Image
 from google import genai
 from google.genai import types
 
 logger = logging.getLogger(__name__)
+
+from pydantic import BaseModel, Field
+
+
+class BoundingBox(BaseModel):
+    x: float = Field(..., ge=0, le=1)
+    y: float = Field(..., ge=0, le=1)
+    width: float = Field(..., ge=0, le=1)
+    height: float = Field(..., ge=0, le=1)
+
+
+class SegmentationResult(BaseModel):
+    bounding_box: BoundingBox
+    confidence: float = Field(..., ge=0, le=1)
+    region_description: str
+    relevance_reasoning: str
 
 
 class GeminiVisionSegmenter:
@@ -68,15 +84,18 @@ class GeminiVisionSegmenter:
             prompt = self._create_segmentation_prompt(text_query)
 
             # Call Gemini Vision
-            generate_result = self._call_gemini_vision(image_data, prompt)
+            raw_response, visual_box_obj = self._call_gemini_vision(image_data, prompt)
 
-            # Parse the response to extract bounding box
-            visual_box = self._parse_segmentation_result(generate_result)
+            # Convert only if it's a SegmentationResult
+            if isinstance(visual_box_obj, SegmentationResult):
+                visual_box = visual_box_obj.model_dump()
+            else:
+                visual_box = visual_box_obj  # already None or dict
 
             return {
                 "visual_box": visual_box,
-                "raw_response": generate_result,
-                "image_processed": True
+                "raw_response": raw_response,
+                "image_processed": True,
             }
 
         except Exception as e:
@@ -164,7 +183,7 @@ If no specific region can be identified or the entire image is relevant, you may
 """
         return prompt
 
-    def _call_gemini_vision(self, image_data: str, prompt: str) -> str:
+    def _call_gemini_vision(self, image_data: str, prompt: str) -> Tuple[str, Optional[Dict[str, Any]]]:
         """
         Call Gemini Vision API with image and prompt.
         
@@ -182,127 +201,24 @@ If no specific region can be identified or the entire image is relevant, you may
                 mime_type="image/jpeg"
             )
 
+            # Any other controls (temperature, top_p…) go here
+            generation_config = {
+                "response_mime_type": "application/json",
+                "response_schema": SegmentationResult,
+            }
+
             # Generate content using modern Gemini API
             response = self.client.models.generate_content(
                 model=self.model,
-                contents=[prompt, image_part]
+                contents=[prompt, image_part],
+                config=generation_config
             )
 
-            return response.text if response.text else ""
+            return response.text, response.parsed
 
         except Exception as e:
             logger.error(f"Gemini API call failed: {e}")
             raise
-
-    def _parse_segmentation_result(self, response_text: str) -> Optional[Dict[str, Any]]:
-        """
-        Parse Gemini's response to extract bounding box information.
-        
-        Args:
-            response_text: Raw response from Gemini
-            
-        Returns:
-            Parsed visual box data or None if parsing failed
-        """
-        try:
-            import json
-            import re
-
-            # Try to extract JSON from the response
-            json_pattern = r'\{.*?\}'
-            json_matches = re.findall(json_pattern, response_text, re.DOTALL)
-
-            for json_match in json_matches:
-                try:
-                    parsed = json.loads(json_match)
-                    if "bounding_box" in parsed:
-                        bbox = parsed["bounding_box"]
-
-                        # Validate bounding box format
-                        required_keys = ["x", "y", "width", "height"]
-                        if all(key in bbox for key in required_keys):
-                            # Ensure coordinates are within valid range
-                            bbox = {
-                                "x": max(0, min(1, float(bbox["x"]))),
-                                "y": max(0, min(1, float(bbox["y"]))),
-                                "width": max(0, min(1, float(bbox["width"]))),
-                                "height": max(0, min(1, float(bbox["height"]))),
-                            }
-
-                            return {
-                                "bounding_box": bbox,
-                                "confidence": parsed.get("confidence", 0.5),
-                                "region_description": parsed.get("region_description", ""),
-                                "relevance_reasoning": parsed.get("relevance_reasoning", ""),
-                                "format": "normalized_coords"
-                            }
-
-                except json.JSONDecodeError:
-                    continue
-
-            # If no valid JSON found, try to extract coordinates from text
-            logger.warning("Could not parse JSON response, attempting text extraction")
-            return self._extract_coords_from_text(response_text)
-
-        except Exception as e:
-            logger.error(f"Failed to parse segmentation result: {e}")
-            return None
-
-    @staticmethod
-    def _extract_coords_from_text(text: str) -> Optional[Dict[str, Any]]:
-        """
-        Fallback method to extract coordinates from free text response.
-        
-        Args:
-            text: Response text
-            
-        Returns:
-            Extracted visual box data or None
-        """
-        try:
-            import re
-
-            # Look for patterns like "x: 0.2, y: 0.3, width: 0.4, height: 0.5"
-            coord_pattern = r'x[:\s]*([0-9.]+).*?y[:\s]*([0-9.]+).*?width[:\s]*([0-9.]+).*?height[:\s]*([0-9.]+)'
-            match = re.search(coord_pattern, text, re.IGNORECASE | re.DOTALL)
-
-            if match:
-                x, y, width, height = map(float, match.groups())
-
-                # Normalize coordinates
-                bbox = {
-                    "x": max(0, min(1, x)),
-                    "y": max(0, min(1, y)),
-                    "width": max(0, min(1, width)),
-                    "height": max(0, min(1, height)),
-                }
-
-                return {
-                    "bounding_box": bbox,
-                    "confidence": 0.3,  # Lower confidence for text extraction
-                    "region_description": "Extracted from text response",
-                    "relevance_reasoning": "Coordinates extracted via text parsing",
-                    "format": "normalized_coords"
-                }
-
-            # If no coordinates found, return a default box covering the center region
-            logger.warning("No coordinates found, using default center region")
-            return {
-                "bounding_box": {
-                    "x": 0.25,
-                    "y": 0.25,
-                    "width": 0.5,
-                    "height": 0.5
-                },
-                "confidence": 0.1,
-                "region_description": "Default center region",
-                "relevance_reasoning": "No specific region identified",
-                "format": "normalized_coords"
-            }
-
-        except Exception as e:
-            logger.error(f"Text extraction failed: {e}")
-            return None
 
 
 def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:

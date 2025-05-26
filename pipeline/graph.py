@@ -7,7 +7,7 @@ Human verification is handled separately through a dedicated UI interface.
 
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
@@ -31,6 +31,7 @@ class PipelineState(TypedDict):
     """
     # Input fields
     sample_id: str
+    run_dir: Optional[str]  # Directory where pipeline outputs should be saved
 
     # Loader outputs
     image_path: Optional[str]
@@ -55,7 +56,11 @@ class PipelineState(TypedDict):
     quality_scores: Optional[Dict[str, float]]
 
     # Node execution tracking
-    completed_nodes: List[str]
+    loader_completed: Optional[bool]
+    segmentation_completed: Optional[bool]
+    asr_tts_completed: Optional[bool]
+    explanation_completed: Optional[bool]
+    validation_completed: Optional[bool]
     node_errors: Dict[str, str]
 
     # Additional context
@@ -80,17 +85,12 @@ def loader_node(state: PipelineState) -> Dict[str, Any]:
             image_path=state.get("image_path"),
             text_query=state.get("text_query"),
             metadata=state.get("metadata", {})
-        )
-
-        # Update completed nodes
-        completed_nodes = state.get("completed_nodes", [])
-        completed_nodes.append("loader")
-
+        )  # Update completed nodes
         return {
             "image_path": result["image_path"],
             "text_query": result["text_query"],
             "metadata": result["metadata"],
-            "completed_nodes": completed_nodes,
+            "loader_completed": True,
             "node_name": "loader",
             "node_version": "v1.0.0",
         }
@@ -118,27 +118,24 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
     try:
         if not state.get("image_path"):
             logger.warning("No image available for segmentation")
-            completed_nodes = state.get("completed_nodes", [])
-            completed_nodes.append("segmentation")
             return {
                 "visual_box": None,
-                "completed_nodes": completed_nodes,
+                "segmentation_completed": True,
                 "node_name": "segmentation",
                 "node_version": "v1.0.0",
             }
 
+        # Cast to string to satisfy the type checker
+        image_path = str(state["image_path"])
+
         result = run_segmentation(
-            image_path=state["image_path"],
+            image_path=image_path,
             text_query=state["text_query"]
         )
 
-        # Update completed nodes
-        completed_nodes = state.get("completed_nodes", [])
-        completed_nodes.append("segmentation")
-
         return {
             "visual_box": result["visual_box"],
-            "completed_nodes": completed_nodes,
+            "segmentation_completed": True,
             "node_name": "segmentation",
             "node_version": "v1.0.0",
         }
@@ -165,19 +162,19 @@ def asr_tts_node(state: PipelineState) -> Dict[str, Any]:
     logger.info(f"Running ASR/TTS for sample: {state['sample_id']}")
 
     try:
+        # Use run_dir if provided, otherwise fall back to default
+        output_dir = state.get("run_dir") or "runs/current"
+
         result = run_asr_tts(
-            text_query=state["text_query"]
-        )
-
-        # Update completed nodes
-        completed_nodes = state.get("completed_nodes", [])
-        completed_nodes.append("asr_tts")
-
+            text_query=state["text_query"],
+            sample_id=state["sample_id"],
+            output_dir=output_dir
+        )  # Update completed nodes
         return {
             "speech_path": result["speech_path"],
             "asr_text": result["asr_text"],
             "speech_quality_score": result["speech_quality_score"],
-            "completed_nodes": completed_nodes,
+            "asr_tts_completed": True,
             "node_name": "asr_tts",
             "node_version": "v1.0.0",
         }
@@ -213,16 +210,11 @@ def explanation_node(state: PipelineState) -> Dict[str, Any]:
                 "visual_box": state.get("visual_box"),
                 "ground_truth_answer": state.get("ground_truth_answer", "")
             }
-        )
-
-        # Update completed nodes
-        completed_nodes = state.get("completed_nodes", [])
-        completed_nodes.append("explanation")
-
+        )  # Update completed nodes
         return {
             "text_explanation": result["text_explanation"],
             "uncertainty": result["uncertainty"],
-            "completed_nodes": completed_nodes,
+            "explanation_completed": True,
             "node_name": "explanation",
             "node_version": "v1.0.0",
         }
@@ -258,16 +250,13 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
                 "visual_box": state.get("visual_box"),
                 "speech_path": state.get("speech_path"),
                 "asr_text": state.get("asr_text"),
+                "speech_quality_score": state.get("speech_quality_score"),
                 "text_explanation": state.get("text_explanation"),
                 "uncertainty": state.get("uncertainty"),
                 "ground_truth_answer": state.get("ground_truth_answer"),
                 "node_errors": state.get("node_errors", {})
             }
         )
-
-        # Update completed nodes
-        completed_nodes = state.get("completed_nodes", [])
-        completed_nodes.append("validation")
 
         # Determine pipeline status
         has_errors = bool(state.get("node_errors", {}))
@@ -284,7 +273,7 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
             "needs_review": needs_review,
             "critic_notes": result["critic_notes"],
             "quality_scores": result["quality_scores"],
-            "completed_nodes": completed_nodes,
+            "validation_completed": True,
             "pipeline_status": pipeline_status,
             "processing_end_time": datetime.now().isoformat(),
             "node_name": "validation",
@@ -335,7 +324,7 @@ def create_medvoice_pipeline() -> CompiledStateGraph:
     graph_builder.add_edge("asr_tts", "explanation")
     graph_builder.add_edge("explanation", "validation")
 
-    # Pipeline always ends after validation
+    # The pipeline always ends after validation
     graph_builder.add_edge("validation", END)
 
     # Compile the graph

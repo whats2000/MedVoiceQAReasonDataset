@@ -135,6 +135,12 @@ class BarkWhisperProcessor:
                 return_tensors="pt",
             )
 
+            # Add attention_mask if missing
+            if "attention_mask" not in inputs:
+                # attention mask: all ones (no padding)
+                attn_mask = torch.ones_like(inputs["input_ids"])
+                inputs["attention_mask"] = attn_mask
+
             # Move the ordinary tensors
             inputs = inputs.to(self.device)
 

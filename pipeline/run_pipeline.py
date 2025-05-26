@@ -184,6 +184,9 @@ def run_pipeline(
                 console.print("[red]Non-HuggingFace mode not supported without sample_data module[/red]")
                 raise ValueError("Please use --use-huggingface flag or provide --input-data")
 
+        # Initialize dataset_metadata
+        dataset_metadata = {}
+
         # Load samples from HF loader directly if using existing data
         if input_data == str(Path("data/vqarad_hf")):
             # Use HF loader to get samples directly
@@ -206,6 +209,13 @@ def run_pipeline(
 
             samples = all_samples
             console.print(f"[green]Loaded {len(samples)} samples from Hugging Face dataset[/green]")
+
+            # Create metadata for HF samples
+            dataset_metadata = {
+                "source": "huggingface_vqa_rad",
+                "sample_count": len(samples),
+                "samples": samples
+            }
         else:
             # Load samples from created dataset
             metadata_file = Path(input_data) / "sample_metadata.json"
@@ -249,6 +259,7 @@ def run_pipeline(
                     # Run pipeline on sample
                     result = pipeline.invoke({
                         "sample_id": sample["sample_id"],
+                        "run_dir": str(run_dir),
                         "image_path": image_path,
                         "text_query": sample["question"],
                         "ground_truth_answer": sample.get("answer", ""),
