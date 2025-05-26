@@ -21,7 +21,7 @@
         "class": "nodes.segmentation.GeminiVisionSegmenter",
         "description": "Visual localization using Gemini 2 Flash Vision (bbox-only)",
         "maintainer": "vision-team",
-        "resources": ["gemini-2-flash"],
+        "resources": ["gemini-2.5-flash"],
         "input_schema": {
           "image_path": "str",
           "text_query": "str"
@@ -52,7 +52,7 @@
         "class": "nodes.explanation.GeminiReasoningEngine",
         "description": "Generate reasoning and uncertainty via Gemini 2 Flash Language",
         "maintainer": "reasoning-team",
-        "resources": ["gemini-2-flash"],
+        "resources": ["gemini-2.5-flash"],
         "input_schema": {
           "image_path": "str",
           "text_query": "str",
@@ -69,7 +69,7 @@
         "class": "nodes.validation.GeminiValidationDuo",
         "description": "Quality assessment and critic validation using Gemini",
         "maintainer": "quality-team",
-        "resources": ["gemini-2-flash"],
+        "resources": ["gemini-2.5-flash"],
         "input_schema": {
           "image_path": "str",
           "text_query": "str",
@@ -122,10 +122,10 @@
     }
   },
   "resources": {
-    "gemini-2-flash": {
+    "gemini-2.5-flash": {
       "type": "llm",
       "provider": "google",
-      "model": "gemini-2.0-flash-exp",
+      "model": "gemini-2.5-flash-preview-05-20",
       "capabilities": ["vision", "text", "multimodal"]
     },
     "whisper-large-v3": {

@@ -22,7 +22,7 @@ class GeminiValidationDuo:
     and determining if human review is needed.
     """
 
-    def __init__(self, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')):
         """Initialize the Gemini validation system."""
         self.model = model
 
@@ -363,7 +363,7 @@ def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, 
             }
 
         # Initialize validation system
-        validator = GeminiValidationDuo()
+        validator = GeminiValidationDuo(model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'))
 
         # Perform validation
         needs_review, critic_notes, quality_scores = validator.validate_pipeline_output(

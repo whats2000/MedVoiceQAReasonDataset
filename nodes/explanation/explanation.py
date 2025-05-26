@@ -23,7 +23,7 @@ class GeminiReasoningEngine:
     to produce explainable reasoning chains and uncertainty quantification.
     """
 
-    def __init__(self, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')):
         """Initialize the Gemini reasoning engine."""
         self.model = model
 
@@ -228,7 +228,7 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         # Initialize reasoning engine
-        reasoning_engine = GeminiReasoningEngine()
+        reasoning_engine = GeminiReasoningEngine(model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'))
 
         # Generate reasoning
         explanation, uncertainty = reasoning_engine.generate_reasoning(

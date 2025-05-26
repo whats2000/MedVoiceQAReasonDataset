@@ -78,7 +78,7 @@ class BarkWhisperProcessor:
                 self.bark_processor = AutoProcessor.from_pretrained(self.bark_model_name)
                 self.bark_model = BarkModel.from_pretrained(
                     self.bark_model_name,
-                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 ).to(self.device)
 
                 logger.info("Bark model loaded successfully")

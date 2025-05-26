@@ -60,7 +60,7 @@ def create_run_directory() -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Create hash based on configuration
-    config_str = f"{timestamp}_{os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-exp')}"
+    config_str = f"{timestamp}_{os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')}"
     config_hash = hashlib.md5(config_str.encode()).hexdigest()[:8]
 
     run_dir = Path("runs") / f"{timestamp}-{config_hash}"
