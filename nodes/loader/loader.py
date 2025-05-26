@@ -2,7 +2,7 @@
 VQA-RAD Loader Node
 
 Loads VQA-RAD samples from Hugging Face dataset and converts DICOM images to PNG format if needed.
-Follows the node contract: consumes sample_id, produces image_path, text_query, metadata.
+Follow the node contract: consumes sample_id, produces image_path, text_query, metadata.
 """
 
 import logging
@@ -25,7 +25,7 @@ class VQARADLoader:
     VQA-RAD dataset loader with DICOM to PNG conversion capability.
     Uses Hugging Face VQA-RAD dataset as the primary data source.
     """
-    
+
     def __init__(self, data_path: str = "data/vqarad", output_dir: str = "runs/current", use_huggingface: bool = True):
         """
         Initialize the loader.
@@ -39,21 +39,21 @@ class VQARADLoader:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.use_huggingface = use_huggingface
-        
-        # Create images output directory
+
+        # Create the images output directory
         self.images_output_dir = self.output_dir / "images"
         self.images_output_dir.mkdir(exist_ok=True)
-        
+
         # Initialize Hugging Face loader if enabled
         if self.use_huggingface:
             self.hf_loader = HuggingFaceVQARADLoader(
                 cache_dir=str(self.data_path / "hf_cache"),
                 output_dir=str(self.output_dir / "hf_data")
             )
-    
+
     def load_sample(
-        self, 
-        sample_id: str, 
+        self,
+        sample_id: str,
         image_path: Optional[str] = None,
         text_query: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
@@ -74,25 +74,25 @@ class VQARADLoader:
             # If image_path and text_query are provided, use them directly
             if image_path and text_query:
                 logger.info(f"Using provided data for sample {sample_id}")
-                
+
                 # Ensure image is in correct format
                 processed_image_path = self._process_image(image_path, sample_id)
-                
+
                 return {
                     "image_path": str(processed_image_path),
                     "text_query": text_query,
                     "metadata": metadata or {}
                 }
-            
+
             # Try to load from Hugging Face dataset first
             if self.use_huggingface:
                 logger.info(f"Loading sample {sample_id} from Hugging Face VQA-RAD dataset")
                 try:
                     hf_sample = self.hf_loader.get_sample_by_id(sample_id)
-                    
-                    # Process the image to ensure correct format
+
+                    # Process the image to ensure the correct format
                     processed_image_path = self._process_image(hf_sample["image_path"], sample_id)
-                    
+
                     return {
                         "image_path": str(processed_image_path),
                         "text_query": hf_sample["question"],
@@ -107,17 +107,17 @@ class VQARADLoader:
                 except Exception as e:
                     logger.warning(f"Failed to load from Hugging Face dataset: {e}")
                     logger.info("Falling back to local dataset or mock data")
-            
+
             # Otherwise, try to load from local VQA-RAD dataset
             logger.info(f"Loading sample {sample_id} from local VQA-RAD dataset")
             sample_data = self._load_from_dataset(sample_id)
-            
+
             return sample_data
-            
+
         except Exception as e:
             logger.error(f"Failed to load sample {sample_id}: {e}")
             raise
-    
+
     def _process_image(self, image_path: str, sample_id: str) -> Path:
         """
         Process and convert image to PNG format if needed.
@@ -130,18 +130,18 @@ class VQARADLoader:
             Path to processed PNG image
         """
         input_path = Path(image_path)
-        
+
         if not input_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-        
+
         # Determine output filename
         output_filename = f"{sample_id}.png"
         output_path = self.images_output_dir / output_filename
-        
+
         # If already PNG and in output directory, return as-is
         if input_path.suffix.lower() == '.png' and input_path.parent == self.images_output_dir:
             return input_path
-        
+
         try:
             # Handle different image formats
             if input_path.suffix.lower() in ['.dcm', '.dicom']:
@@ -154,10 +154,10 @@ class VQARADLoader:
                 # Try to handle as generic image
                 logger.warning(f"Unknown image format for {input_path}, attempting generic conversion")
                 self._convert_image_to_png(input_path, output_path)
-            
+
             logger.info(f"Converted image: {input_path} → {output_path}")
             return output_path
-            
+
         except Exception as e:
             logger.error(f"Failed to process image {input_path}: {e}")
             # Fallback: copy original file
@@ -176,21 +176,21 @@ class VQARADLoader:
         try:
             # Read DICOM using pydicom
             dicom_data = pydicom.dcmread(str(dicom_path))
-            
+
             # Get pixel data
             pixel_array = dicom_data.pixel_array
-            
+
             # Normalize to 0-255 range
             if pixel_array.dtype != np.uint8:
                 # Handle different DICOM value ranges
                 pixel_min = pixel_array.min()
                 pixel_max = pixel_array.max()
-                
+
                 if pixel_max > pixel_min:
                     pixel_array = ((pixel_array - pixel_min) / (pixel_max - pixel_min) * 255).astype(np.uint8)
                 else:
                     pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
-            
+
             # Convert to PIL Image and save as PNG
             if len(pixel_array.shape) == 3:
                 # Multi-channel image
@@ -198,27 +198,28 @@ class VQARADLoader:
             else:
                 # Grayscale image
                 image = Image.fromarray(pixel_array, mode='L')
-            
+
             image.save(output_path, 'PNG')
-            
+
         except Exception as e:
             logger.warning(f"Failed to convert DICOM with pydicom, trying SimpleITK: {e}")
-            
+
             # Fallback to SimpleITK
             try:
                 sitk_image = sitk.ReadImage(str(dicom_path))
                 sitk_array = sitk.GetArrayFromImage(sitk_image)
-                
+
                 # SimpleITK images are typically (z, y, x) - take middle slice if 3D
                 if len(sitk_array.shape) == 3:
                     sitk_array = sitk_array[sitk_array.shape[0] // 2]
-                
+
                 # Normalize
-                sitk_array = ((sitk_array - sitk_array.min()) / (sitk_array.max() - sitk_array.min()) * 255).astype(np.uint8)
-                
+                sitk_array = ((sitk_array - sitk_array.min()) / (sitk_array.max() - sitk_array.min()) * 255).astype(
+                    np.uint8)
+
                 image = Image.fromarray(sitk_array, mode='L')
                 image.save(output_path, 'PNG')
-                
+
             except Exception as e2:
                 logger.error(f"SimpleITK conversion also failed: {e2}")
                 raise e
@@ -245,13 +246,13 @@ class VQARADLoader:
                     img = background
                 elif img.mode not in ['RGB', 'L']:
                     img = img.convert('RGB')
-                
+
                 img.save(output_path, 'PNG')
-                
+
         except Exception as e:
             logger.error(f"Failed to convert image {image_path}: {e}")
             raise
-    
+
     def _load_from_dataset(self, sample_id: str) -> Dict[str, Any]:
         """
         Load sample from VQA-RAD dataset files.
@@ -267,12 +268,12 @@ class VQARADLoader:
         """
         # For now, return mock data since we're working with test datasets
         logger.warning(f"VQA-RAD dataset loading not implemented, using mock data for {sample_id}")
-        
+
         # Create a basic mock image if none exists
         mock_image_path = self.images_output_dir / f"{sample_id}_mock.png"
         if not mock_image_path.exists():
             self._create_mock_medical_image(mock_image_path)
-        
+
         return {
             "image_path": str(mock_image_path),
             "text_query": f"What is visible in this medical image for sample {sample_id}?",
@@ -294,27 +295,25 @@ class VQARADLoader:
         """
         try:
             # Create a simple mock medical image (grayscale with some structure)
-            import numpy as np
-            
             # Create 512x512 grayscale image
             img_array = np.random.randint(50, 200, (512, 512), dtype=np.uint8)
-            
+
             # Add some circular structure to mimic medical imaging
             center_x, center_y = 256, 256
             y, x = np.ogrid[:512, :512]
-            mask = (x - center_x)**2 + (y - center_y)**2 <= 100**2
+            mask = (x - center_x) ** 2 + (y - center_y) ** 2 <= 100 ** 2
             img_array[mask] = np.clip(img_array[mask] + 50, 0, 255)
-            
+
             # Add some noise typical of medical images
             noise = np.random.normal(0, 10, (512, 512))
             img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
-            
+
             # Save as PNG
             image = Image.fromarray(img_array, mode='L')
             image.save(output_path, 'PNG')
-            
+
             logger.info(f"Created mock medical image: {output_path}")
-            
+
         except Exception as e:
             logger.error(f"Failed to create mock image: {e}")
             # Create minimal image as fallback
@@ -346,24 +345,24 @@ def run_loader(
         Exception: If loading or processing fails
     """
     logger.info(f"Starting loader for sample: {sample_id}")
-    
+
     try:
         loader = VQARADLoader(output_dir=output_dir)
-        result = loader.load_sample(
+        load_result = loader.load_sample(
             sample_id=sample_id,
             image_path=image_path,
             text_query=text_query,
             metadata=metadata
         )
-        
+
         # Add loader metadata
-        result["metadata"]["loaded_by"] = "VQARADLoader"
-        result["metadata"]["loader_version"] = "v1.0.0"
-        result["metadata"]["sample_id"] = sample_id
-        
+        load_result["metadata"]["loaded_by"] = "VQARADLoader"
+        load_result["metadata"]["loader_version"] = "v1.0.0"
+        load_result["metadata"]["sample_id"] = sample_id
+
         logger.info(f"Successfully loaded sample: {sample_id}")
-        return result
-        
+        return load_result
+
     except Exception as e:
         logger.error(f"Loader failed for sample {sample_id}: {e}")
         raise
@@ -372,19 +371,19 @@ def run_loader(
 if __name__ == "__main__":
     # Test the loader
     import tempfile
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         result = run_loader(
             sample_id="test_001",
             output_dir=temp_dir
         )
-        
+
         print("Loader test results:")
         print(f"  Image path: {result['image_path']}")
         print(f"  Text query: {result['text_query']}")
         print(f"  Metadata: {result['metadata']}")
-        
-        # Check if image exists
+
+        # Check if the image exists
         image_path = Path(result['image_path'])
         print(f"  Image exists: {image_path.exists()}")
         if image_path.exists():

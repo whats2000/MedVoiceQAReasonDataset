@@ -74,7 +74,7 @@ def save_manifest(run_dir: Path, config: Dict[str, Any], results: Dict[str, Any]
     manifest = {
         "timestamp": datetime.now().isoformat(),
         "config": config,
-        "results": results,        "environment": {
+        "results": results, "environment": {
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": os.name,
             "working_directory": str(Path.cwd()),

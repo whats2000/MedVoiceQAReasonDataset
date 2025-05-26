@@ -21,27 +21,27 @@ class GeminiValidationDuo:
     This component acts as a quality gatekeeper, evaluating all pipeline outputs
     and determining if human review is needed.
     """
-    
+
     def __init__(self, model: str = "gemini-2.0-flash-exp"):
         """Initialize the Gemini validation system."""
         self.model = model
         self.client = None
-        
+
         # Initialize Gemini client
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GOOGLE_API_KEY environment variable is required")
-        
+
         os.environ['GOOGLE_API_KEY'] = api_key
         self.client = genai.Client()
-        
+
         # Quality thresholds from registry.json
         self.quality_thresholds = {
             "speech_quality_min": 0.7,
             "uncertainty_max": 0.3,  # High uncertainty triggers review
             "explanation_min_length": 50,
             "visual_box_completeness": True
-        }        
+        }
         # Validation prompt template
         self.validation_prompt = """
 You are a medical AI quality assurance specialist. Evaluate this complete medical image analysis pipeline output.
@@ -104,7 +104,7 @@ CRITIC_NOTES: [detailed feedback]
         try:
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
-            
+
             # Determine MIME type
             image_path_lower = image_path.lower()
             if image_path_lower.endswith('.png'):
@@ -114,9 +114,9 @@ CRITIC_NOTES: [detailed feedback]
             else:
                 # Default to PNG
                 mime_type = "image/png"
-            
+
             return types.Part.from_bytes(data=image_data, mime_type=mime_type)
-            
+
         except Exception as e:
             logger.error(f"Failed to load image {image_path}: {e}")
             raise
@@ -129,62 +129,62 @@ CRITIC_NOTES: [detailed feedback]
             needs_review = False
             critic_notes = ""
             quality_scores = {}
-            
+
             for line in lines:
                 line = line.strip()
                 if line.upper().startswith('NEEDS_REVIEW:'):
                     value = line.split(':', 1)[1].strip().lower()
                     needs_review = value in ['true', '1', 'yes']
-                
+
                 elif line.upper().startswith('VISUAL_LOCALIZATION_QUALITY:'):
                     try:
                         score = float(line.split(':', 1)[1].strip())
                         quality_scores['visual_localization_quality'] = max(0.0, min(1.0, score))
                     except ValueError:
                         quality_scores['visual_localization_quality'] = 0.5
-                
+
                 elif line.upper().startswith('SPEECH_PROCESSING_QUALITY:'):
                     try:
                         score = float(line.split(':', 1)[1].strip())
                         quality_scores['speech_processing_quality'] = max(0.0, min(1.0, score))
                     except ValueError:
                         quality_scores['speech_processing_quality'] = 0.5
-                
+
                 elif line.upper().startswith('REASONING_QUALITY:'):
                     try:
                         score = float(line.split(':', 1)[1].strip())
                         quality_scores['reasoning_quality'] = max(0.0, min(1.0, score))
                     except ValueError:
                         quality_scores['reasoning_quality'] = 0.5
-                
+
                 elif line.upper().startswith('CONSISTENCY_SCORE:'):
                     try:
                         score = float(line.split(':', 1)[1].strip())
                         quality_scores['consistency_score'] = max(0.0, min(1.0, score))
                     except ValueError:
                         quality_scores['consistency_score'] = 0.5
-                
+
                 elif line.upper().startswith('OVERALL_QUALITY:'):
                     try:
                         score = float(line.split(':', 1)[1].strip())
                         quality_scores['overall_quality'] = max(0.0, min(1.0, score))
                     except ValueError:
                         quality_scores['overall_quality'] = 0.5
-                
+
                 elif line.upper().startswith('CRITIC_NOTES:'):
                     critic_notes = line.split(':', 1)[1].strip()
-            
+
             # Ensure all required scores are present
             required_scores = [
-                'visual_localization_quality', 'speech_processing_quality', 
+                'visual_localization_quality', 'speech_processing_quality',
                 'reasoning_quality', 'consistency_score', 'overall_quality'
             ]
             for score_name in required_scores:
                 if score_name not in quality_scores:
                     quality_scores[score_name] = 0.5  # Default medium score
-            
+
             return needs_review, critic_notes, quality_scores
-            
+
         except Exception as e:
             logger.error(f"Failed to parse validation response: {e}")
             # Return conservative defaults
@@ -195,40 +195,42 @@ CRITIC_NOTES: [detailed feedback]
                 'consistency_score': 0.3,
                 'overall_quality': 0.3
             }
-    
+
     def _apply_heuristic_checks(
-        self, 
-        speech_quality_score: float, 
-        uncertainty: float, 
+        self,
+        speech_quality_score: float,
+        uncertainty: float,
         explanation: str,
         visual_box: Dict[str, Any]
     ) -> Tuple[bool, str]:
         """Apply heuristic quality checks."""
         issues = []
-        
+
         # Check speech quality
         if speech_quality_score < self.quality_thresholds["speech_quality_min"]:
-            issues.append(f"Low speech quality: {speech_quality_score:.2f} < {self.quality_thresholds['speech_quality_min']}")
-        
+            issues.append(
+                f"Low speech quality: {speech_quality_score:.2f} < {self.quality_thresholds['speech_quality_min']}")
+
         # Check uncertainty
         if uncertainty > self.quality_thresholds["uncertainty_max"]:
             issues.append(f"High uncertainty: {uncertainty:.2f} > {self.quality_thresholds['uncertainty_max']}")
-        
+
         # Check explanation length
         if len(explanation) < self.quality_thresholds["explanation_min_length"]:
-            issues.append(f"Short explanation: {len(explanation)} chars < {self.quality_thresholds['explanation_min_length']}")
-        
+            issues.append(
+                f"Short explanation: {len(explanation)} chars < {self.quality_thresholds['explanation_min_length']}")
+
         # Check visual box completeness
         required_box_keys = ['x1', 'y1', 'x2', 'y2']
         missing_keys = [key for key in required_box_keys if key not in visual_box]
         if missing_keys:
             issues.append(f"Incomplete visual box: missing {missing_keys}")
-        
+
         needs_review = len(issues) > 0
         notes = "; ".join(issues) if issues else "All heuristic checks passed"
-        
+
         return needs_review, notes
-    
+
     def validate_pipeline_output(
         self,
         image_path: str,
@@ -258,12 +260,12 @@ CRITIC_NOTES: [detailed feedback]
         """
         try:
             logger.info("Performing pipeline validation")
-            
+
             # First apply heuristic checks
             heuristic_review, heuristic_notes = self._apply_heuristic_checks(
                 speech_quality_score, uncertainty, text_explanation, visual_box
             )
-            
+
             # Prepare validation prompt
             prompt = self.validation_prompt.format(
                 query=text_query,
@@ -273,27 +275,27 @@ CRITIC_NOTES: [detailed feedback]
                 explanation=text_explanation[:500] + "..." if len(text_explanation) > 500 else text_explanation,
                 uncertainty=uncertainty
             )
-              # Load image for Gemini API
+            # Load image for Gemini API
             image_part = self._load_image_for_genai(image_path)
-            
+
             # Generate validation assessment using modern API
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=[prompt, image_part]
             )
             response_text = response.text.strip()
-            
+
             # Parse response
             ai_needs_review, ai_notes, quality_scores = self._parse_validation_response(response_text)
-            
+
             # Combine heuristic and AI assessments
             final_needs_review = heuristic_review or ai_needs_review
             combined_notes = f"Heuristic checks: {heuristic_notes}. AI assessment: {ai_notes}"
-            
+
             logger.info(f"Validation complete. Needs review: {final_needs_review}")
-            
+
             return final_needs_review, combined_notes, quality_scores
-            
+
         except Exception as e:
             logger.error(f"Validation failed: {e}")
             # Conservative fallback - flag for review
@@ -317,7 +319,7 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
         Updated state with needs_review, critic_notes, and quality_scores
     """
     logger.info("Running validation node")
-    
+
     try:
         # Extract required inputs
         image_path = state.get("image_path")
@@ -328,7 +330,7 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
         text_explanation = state.get("text_explanation")
         uncertainty = state.get("uncertainty")
         speech_quality_score = state.get("speech_quality_score")
-        
+
         # Validate all required inputs are present
         required_inputs = [
             ("image_path", image_path),
@@ -340,7 +342,7 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
             ("uncertainty", uncertainty),
             ("speech_quality_score", speech_quality_score)
         ]
-        
+
         missing_inputs = [name for name, value in required_inputs if value is None]
         if missing_inputs:
             logger.error(f"Missing required inputs for validation: {missing_inputs}")
@@ -356,10 +358,10 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
                     'overall_quality': 0.0
                 }
             }
-        
+
         # Initialize validation system
         validator = GeminiValidationDuo()
-        
+
         # Perform validation
         needs_review, critic_notes, quality_scores = validator.validate_pipeline_output(
             image_path=image_path,
@@ -371,16 +373,16 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
             uncertainty=uncertainty,
             speech_quality_score=speech_quality_score
         )
-        
+
         logger.info(f"Validation complete. Needs review: {needs_review}")
-        
+
         return {
             **state,
             "needs_review": needs_review,
             "critic_notes": critic_notes,
             "quality_scores": quality_scores
         }
-        
+
     except Exception as e:
         logger.error(f"Validation node failed: {e}")
         return {

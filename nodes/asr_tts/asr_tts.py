@@ -5,18 +5,16 @@ Converts text queries to speech using Bark TTS, then validates the conversion
 using Whisper ASR to ensure quality.
 """
 
-import os
 import logging
-import tempfile
 import warnings
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
+import numpy as np
 import torch
 import torchaudio
-import numpy as np
-from transformers import AutoProcessor, BarkModel
 import whisper
+from transformers import AutoProcessor, BarkModel
 
 # Suppress warnings from audio libraries
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -136,7 +134,7 @@ class BarkWhisperProcessor:
             with torch.no_grad():
                 audio_array = self.bark_model.generate(**inputs)
             
-            # Convert to numpy and ensure correct shape
+            # Convert to numpy and ensure the correct shape
             if isinstance(audio_array, torch.Tensor):
                 audio_array = audio_array.cpu().numpy()
             
@@ -187,7 +185,7 @@ class BarkWhisperProcessor:
         Convert speech to text using Whisper ASR.
         
         Args:
-            audio_path: Path to audio file
+            audio_path: Path to the audio file
             
         Returns:
             Dict containing ASR results and metadata
@@ -199,21 +197,21 @@ class BarkWhisperProcessor:
             logger.info(f"Recognizing speech from: {Path(audio_path).name}")
             
             # Transcribe audio
-            result = self.whisper_model.transcribe(
+            transcribe_result = self.whisper_model.transcribe(
                 audio_path,
                 language="en",  # Assume English for medical texts
                 task="transcribe"
             )
             
             # Extract text and confidence information
-            transcribed_text = result["text"].strip()
+            transcribed_text = transcribe_result["text"].strip()
             
             # Calculate average confidence from segments
-            segments = result.get("segments", [])
+            segments = transcribe_result.get("segments", [])
             if segments:
                 confidences = []
                 for segment in segments:
-                    # Whisper doesn't always provide confidence, use alternative metrics
+                    # Whisper does not always provide confidence, use alternative metrics
                     if "confidence" in segment:
                         confidences.append(segment["confidence"])
                     elif "avg_logprob" in segment:
@@ -229,7 +227,7 @@ class BarkWhisperProcessor:
             return {
                 "asr_text": transcribed_text,
                 "confidence": avg_confidence,
-                "language": result.get("language", "en"),
+                "language": transcribe_result.get("language", "en"),
                 "segments": segments,
                 "recognition_successful": True
             }
@@ -290,8 +288,9 @@ class BarkWhisperProcessor:
         except Exception as e:
             logger.error(f"Quality calculation failed: {e}")
             return 0.0
-    
-    def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+
+    @staticmethod
+    def _calculate_text_similarity(text1: str, text2: str) -> float:
         """
         Calculate similarity between two texts using simple metrics.
         
@@ -370,7 +369,7 @@ class BarkWhisperProcessor:
             )
             
             # Combine results
-            result = {
+            combine_result = {
                 "speech_path": synthesis_result["speech_path"],
                 "asr_text": asr_result["asr_text"],
                 "speech_quality_score": quality_score,
@@ -381,7 +380,7 @@ class BarkWhisperProcessor:
             }
             
             logger.info(f"TTS-ASR processing completed (quality: {quality_score:.2f})")
-            return result
+            return combine_result
             
         except Exception as e:
             logger.error(f"TTS-ASR processing failed: {e}")
@@ -414,20 +413,20 @@ def run_asr_tts(text_query: str, sample_id: str = "sample", output_dir: str = "r
     
     try:
         processor = BarkWhisperProcessor(output_dir=output_dir)
-        result = processor.process_text_to_speech_validation(text_query, sample_id)
+        validation_result = processor.process_text_to_speech_validation(text_query, sample_id)
         
         # Add node metadata
-        result["processor"] = "BarkWhisperProcessor"
-        result["processor_version"] = "v1.0.0"
-        result["tts_model"] = "suno/bark"
-        result["asr_model"] = "whisper-large-v3"
+        validation_result["processor"] = "BarkWhisperProcessor"
+        validation_result["processor_version"] = "v1.0.0"
+        validation_result["tts_model"] = "suno/bark"
+        validation_result["asr_model"] = "whisper-large-v3"
         
-        if result["processing_successful"]:
+        if validation_result["processing_successful"]:
             logger.info("ASR/TTS processing completed successfully")
         else:
             logger.warning("ASR/TTS processing completed with issues")
         
-        return result
+        return validation_result
         
     except Exception as e:
         logger.error(f"ASR/TTS processing failed: {e}")

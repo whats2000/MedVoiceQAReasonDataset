@@ -20,7 +20,7 @@ class HumanReviewNode:
     This component handles samples flagged by the validation node for human review.
     It provides interfaces for human reviewers to assess and approve/reject samples.
     """
-    
+
     def __init__(self, review_directory: Optional[str] = None):
         """
         Initialize the human review node.
@@ -30,15 +30,15 @@ class HumanReviewNode:
         """
         self.review_directory = Path(review_directory or "runs/review")
         self.review_directory.mkdir(parents=True, exist_ok=True)
-        
+
         # Review status options
         self.review_statuses = {
             "pending": "Awaiting human review",
             "approved": "Approved by human reviewer",
-            "rejected": "Rejected by human reviewer", 
+            "rejected": "Rejected by human reviewer",
             "needs_revision": "Needs revision before approval"
         }
-    
+
     def create_review_request(self, sample_data: Dict[str, Any], critic_notes: str) -> str:
         """
         Create a review request file for human reviewers.
@@ -55,7 +55,7 @@ class HumanReviewNode:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             sample_id = sample_data.get("sample_id", "unknown")
             review_id = f"{sample_id}_{timestamp}"
-            
+
             # Create review data structure
             review_data = {
                 "review_id": review_id,
@@ -69,15 +69,15 @@ class HumanReviewNode:
                 "approval_reason": "",
                 "rejection_reason": ""
             }
-            
+
             # Save review request
             review_file = self.review_directory / f"{review_id}.json"
             with open(review_file, 'w', encoding='utf-8') as f:
                 json.dump(review_data, f, indent=2, ensure_ascii=False)
-            
+
             logger.info(f"Created review request: {review_file}")
             return str(review_file)
-            
+
         except Exception as e:
             logger.error(f"Failed to create review request: {e}")
             raise
@@ -91,11 +91,11 @@ class HumanReviewNode:
         except Exception as e:
             logger.error(f"Failed to load review request {review_file}: {e}")
             raise
-    
+
     def update_review_status(
-        self, 
-        review_file: str, 
-        status: str, 
+        self,
+        review_file: str,
+        status: str,
         reviewer_id: str,
         reviewer_notes: str = "",
         approval_reason: str = "",
@@ -118,11 +118,11 @@ class HumanReviewNode:
         try:
             # Load existing review data
             review_data = self.load_review_request(review_file)
-            
+
             # Validate status
             if status not in self.review_statuses:
                 raise ValueError(f"Invalid status: {status}. Must be one of {list(self.review_statuses.keys())}")
-            
+
             # Update review data
             review_data.update({
                 "status": status,
@@ -132,18 +132,18 @@ class HumanReviewNode:
                 "approval_reason": approval_reason,
                 "rejection_reason": rejection_reason
             })
-            
+
             # Save updated review data
             with open(review_file, 'w', encoding='utf-8') as f:
                 json.dump(review_data, f, indent=2, ensure_ascii=False)
-            
+
             logger.info(f"Updated review {review_file} to status: {status}")
             return review_data
-            
+
         except Exception as e:
             logger.error(f"Failed to update review status: {e}")
             raise
-    
+
     def get_pending_reviews(self) -> list:
         """Get the list of all pending review requests."""
         try:
@@ -162,9 +162,9 @@ class HumanReviewNode:
                 except Exception as e:
                     logger.warning(f"Failed to load review file {review_file}: {e}")
                     continue
-            
+
             return sorted(pending_reviews, key=lambda x: x["created_at"])
-            
+
         except Exception as e:
             logger.error(f"Failed to get pending reviews: {e}")
             return []
@@ -181,9 +181,9 @@ class HumanReviewNode:
             # Simple heuristics for automatic review simulation
             quality_scores = sample_data.get("quality_scores", {})
             uncertainty = sample_data.get("uncertainty", 0.5)
-            
+
             overall_quality = quality_scores.get("overall_quality", 0.5)
-            
+
             # Determine approval based on quality thresholds
             if overall_quality >= 0.8 and uncertainty <= 0.3:
                 status = "approved"
@@ -197,13 +197,13 @@ class HumanReviewNode:
                 status = "rejected"
                 approval_reason = ""
                 rejection_reason = f"Quality too low: {overall_quality:.2f}, uncertainty too high: {uncertainty:.2f}"
-            
+
             return {
                 "review_status": status,
                 "review_notes": f"Automated review simulation. Critic notes: {critic_notes[:100]}...",
                 "approved": status == "approved"
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to simulate review: {e}")
             return {
@@ -224,28 +224,28 @@ def run_human_review(state: Dict[str, Any]) -> Dict[str, Any]:
         Updated state with review_status, review_notes, and approved flag
     """
     logger.info("Running human review node")
-    
+
     try:
         # Extract required data
         sample_data = state.copy()  # Use entire state as sample data
         critic_notes = state.get("critic_notes", "No critic notes provided")
-        
+
         # Initialize human review node
         review_node = HumanReviewNode()
-        
+
         # For now, use simulation mode
         # In production, this would create a review request and wait for human input
         review_result = review_node.simulate_review(sample_data, critic_notes)
-        
+
         logger.info(f"Human review completed: {review_result['review_status']}")
-        
+
         return {
             **state,
             "review_status": review_result["review_status"],
             "review_notes": review_result["review_notes"],
             "approved": review_result["approved"]
         }
-        
+
     except Exception as e:
         logger.error(f"Human review node failed: {e}")
         return {

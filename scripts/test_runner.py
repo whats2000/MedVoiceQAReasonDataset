@@ -65,7 +65,7 @@ def main():
     elif args.test_type == "slow":
         cmd.extend(["-m", "slow"])
 
-    # Add specific file if provided
+    # Add the specific file if provided
     if args.file:
         test_file = Path("tests") / args.file
         if not test_file.exists():

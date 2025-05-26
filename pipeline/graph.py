@@ -79,8 +79,8 @@ def loader_node(state: PipelineState) -> Dict[str, Any]:
     try:
         result = run_loader(
             sample_id=state["sample_id"],
-            image_path=state.get("image_path"),  # May be pre-specified
-            text_query=state.get("text_query"),  # May be pre-specified
+            image_path=state.get("image_path"),  # This may be pre-specified
+            text_query=state.get("text_query"),  # This may be pre-specified
             metadata=state.get("metadata", {})
         )
 
@@ -152,7 +152,7 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
 
 def asr_tts_node(state: PipelineState) -> Dict[str, Any]:
     """
-    Generate speech from text and perform ASR validation.
+    Generate speech from the text and perform ASR validation.
     
     Consumes: text_query
     Produces: speech_path, asr_text, speech_quality_score
@@ -299,7 +299,7 @@ def human_review_node(state: PipelineState) -> Dict[str, Any]:
     try:
         result = run_human_review(
             {
-                "sample_data": state.copy(),  # Pass entire state for review
+                "sample_data": state.copy(),  # Pass the entire state for review
                 "critic_notes": state.get("critic_notes", "No critic notes provided"),
             }
         )
@@ -333,7 +333,7 @@ def human_review_node(state: PipelineState) -> Dict[str, Any]:
 
 def should_require_review(state: PipelineState) -> str:
     """
-    Conditional edge function to determine if human review is needed.
+    Conditional edge for function to determine if human review is needed.
     
     Returns:
         "human_review" if review is needed, END otherwise
@@ -389,10 +389,10 @@ def create_medvoice_pipeline() -> CompiledStateGraph:
     graph_builder.add_edge("human_review", END)
 
     # Compile the graph
-    pipeline = graph_builder.compile()
+    main_pipeline = graph_builder.compile()
 
     logger.info("MedVoiceQA pipeline created successfully")
-    return pipeline
+    return main_pipeline
 
 
 def get_pipeline_info() -> Dict[str, Any]:
