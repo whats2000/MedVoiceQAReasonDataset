@@ -6,6 +6,7 @@ using Whisper ASR to ensure quality.
 """
 
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Dict, Any
@@ -201,6 +202,7 @@ class BarkWhisperProcessor:
             # Load Whisper model if needed
             self._load_whisper_model()
 
+            audio_path = os.path.abspath(audio_path).replace('\\', '/')
             logger.info(f"Recognizing speech from: {Path(audio_path).name}")
 
             # Transcribe audio
@@ -452,26 +454,23 @@ def run_asr_tts(text_query: str, sample_id: str = "sample", output_dir: str = "r
 
 if __name__ == "__main__":
     # Test the ASR/TTS processor
-    import tempfile
+    test_text = "What abnormality is visible in this chest X-ray image?"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        test_text = "What abnormality is visible in this chest X-ray image?"
+    result = run_asr_tts(
+        text_query=test_text,
+        sample_id="test_001",
+        output_dir = "runs/current"
+    )
 
-        result = run_asr_tts(
-            text_query=test_text,
-            sample_id="test_001",
-            output_dir=temp_dir
-        )
+    print("ASR/TTS test results:")
+    print(f"  Original text: {test_text}")
+    print(f"  ASR text: {result['asr_text']}")
+    print(f"  Quality score: {result['speech_quality_score']:.2f}")
+    print(f"  Speech file: {result['speech_path']}")
+    print(f"  Processing successful: {result['processing_successful']}")
 
-        print("ASR/TTS test results:")
-        print(f"  Original text: {test_text}")
-        print(f"  ASR text: {result['asr_text']}")
-        print(f"  Quality score: {result['speech_quality_score']:.2f}")
-        print(f"  Speech file: {result['speech_path']}")
-        print(f"  Processing successful: {result['processing_successful']}")
+    if result['speech_path'] and Path(result['speech_path']).exists():
+        print(f"  Audio file size: {Path(result['speech_path']).stat().st_size} bytes")
 
-        if result['speech_path'] and Path(result['speech_path']).exists():
-            print(f"  Audio file size: {Path(result['speech_path']).stat().st_size} bytes")
-
-        if 'error' in result:
-            print(f"  Error: {result['error']}")
+    if 'error' in result:
+        print(f"  Error: {result['error']}")
