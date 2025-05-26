@@ -489,11 +489,10 @@ if __name__ == "__main__":
             "text_query": sample['question'],
             "visual_box": {
                 "bounding_box": {
-                    "x": 100,
-                    "y": 100,
-                    "width": 300,
-                    "height": 300,
-                    "confidence": 0.8
+                    "x": 0.15,
+                    "y": 0.35,
+                    "width": 0.3,
+                    "height": 0.35,
                 },
                 "confidence": 0.85,  # Mock confidence score
                 "region_description": "Lung region with potential abnormalities",  # Mock description
