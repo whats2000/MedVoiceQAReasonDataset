@@ -37,7 +37,7 @@ flowchart LR
 
 ### 1 · Clone & install with uv
 
-> [!NOTE
+> [!NOTE]
 > If you have not installed `uv`, please do so first:
 > [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
