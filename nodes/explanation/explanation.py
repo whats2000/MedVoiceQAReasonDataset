@@ -5,8 +5,7 @@ Generates reasoning and uncertainty estimates using Gemini 2 Flash Language mode
 """
 
 import logging
-import os
-from pathlib import Path
+
 from typing import Dict, Any, Tuple
 
 from google import genai
@@ -26,7 +25,7 @@ class GeminiReasoningEngine:
     def __init__(self, model: str = "gemini-2.0-flash-exp"):
         """Initialize the Gemini reasoning engine."""
         self.model = model
-        
+
         # Initialize Gemini client
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
@@ -168,7 +167,7 @@ UNCERTAINTY_SCORE: [float between 0.0 and 1.0]
 
             if not response or not response.text:
                 raise ValueError("No response text received from Gemini model")
-            
+
             reasoning_text = response.text.strip()
 
             # Extract uncertainty score
@@ -252,3 +251,94 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
             "text_explanation": f"Error in explanation generation: {str(e)}",
             "uncertainty": 0.1
         }
+
+
+if __name__ == "__main__":
+    """
+    Simple test for run_explanation function using data loader.
+    """
+    import sys
+    import os
+    import logging
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    # Load environment variables
+    load_dotenv()
+
+    # Add the data directory to the path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "data"))
+
+    from data.huggingface_loader import HuggingFaceVQARADLoader
+
+
+    def test_run_explanation():
+        """Simple test to check if run_explanation function works."""
+        print("=" * 50)
+        print("Testing run_explanation Function")
+        print("=" * 50)
+
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+
+        # Initialize data loader
+        print("1. Loading data...")
+        loader = HuggingFaceVQARADLoader(output_dir="data/vqarad_hf")
+
+        # Check if data exists
+        data_dir = Path("data/vqarad_hf")
+        if not data_dir.exists():
+            print("❌ Data directory not found. Please run the data loader first:")
+            print("   uv run .\\data\\huggingface_loader.py")
+            return
+
+        # Get first sample
+        print("2. Getting test sample...")
+        try:
+            sample = loader.get_sample_by_index(0)
+            print(f"✅ Sample loaded: {sample['sample_id']}")
+            print(f"   Question: {sample['question']}")
+            print(f"   Image: {sample['image_path']}")
+        except Exception as e:
+            print(f"❌ Error loading sample: {e}")
+            return
+
+        # Create test state
+        test_state = {
+            "image_path": sample['image_path'],
+            "text_query": sample['question'],
+            "visual_box": {
+                "x1": 100,
+                "y1": 100,
+                "x2": 400,
+                "y2": 400,
+                "confidence": 0.8
+            }
+        }
+
+        # Check API key
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("⚠️  No GOOGLE_API_KEY found - will test error handling")
+
+        # Test run_explanation function
+        print("3. Testing run_explanation...")
+        try:
+            result = run_explanation(test_state)
+
+            # Check result
+            if "text_explanation" in result and "uncertainty" in result:
+                print("✅ run_explanation function works!")
+                print(f"   Explanation: {result['text_explanation'][:100]}...")
+                print(f"   Uncertainty: {result['uncertainty']}")
+            else:
+                print("❌ Missing expected fields in result")
+
+        except Exception as e:
+            print(f"❌ Error: {e}")
+
+        print("\nTest complete!")
+
+
+    # Run the test
+    test_run_explanation()

@@ -285,7 +285,7 @@ CRITIC_NOTES: [detailed feedback]
 
             if not response or not response.text:
                 raise ValueError("No response text received from Gemini model")
-            
+
             response_text = response.text.strip()
 
             # Parse response
@@ -388,15 +388,121 @@ def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, 
 
     except Exception as e:
         logger.error(f"Validation node failed: {e}")
-        return {
-            **state,
-            "needs_review": True,
-            "critic_notes": f"Validation node error: {str(e)}",
-            "quality_scores": {
-                'visual_localization_quality': 0.1,
-                'speech_processing_quality': 0.1,
-                'reasoning_quality': 0.1,
-                'consistency_score': 0.1,
-                'overall_quality': 0.1
-            }
+        raise
+
+
+if __name__ == "__main__":
+    """
+    Simple test for run_validation function using data loader.
+    """
+    import sys
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    # Load environment variables
+    load_dotenv()
+
+    # Add the data directory to the path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "data"))
+
+    from data.huggingface_loader import HuggingFaceVQARADLoader
+
+
+    def test_run_validation():
+        """Simple test to check if run_validation function works."""
+        print("=" * 50)
+        print("Testing run_validation Function")
+        print("=" * 50)
+
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+
+        # Initialize data loader
+        print("1. Loading data...")
+        loader = HuggingFaceVQARADLoader(output_dir="data/vqarad_hf")
+
+        # Check if data exists
+        data_dir = Path("data/vqarad_hf")
+        if not data_dir.exists():
+            print("❌ Data directory not found. Please run the data loader first:")
+            print("   uv run .\\data\\huggingface_loader.py")
+            return
+
+        # Get first sample
+        print("2. Getting test sample...")
+        try:
+            sample = loader.get_sample_by_index(0)
+            print(f"✅ Sample loaded: {sample['sample_id']}")
+            print(f"   Question: {sample['question']}")
+            print(f"   Image: {sample['image_path']}")
+        except Exception as e:
+            print(f"❌ Error loading sample: {e}")
+            return
+
+        # Create mock pipeline state with all required fields
+        test_state = {
+            "image_path": sample['image_path'],
+            "text_query": sample['question'],
+            "visual_box": {
+                "x1": 100,
+                "y1": 100,
+                "x2": 400,
+                "y2": 400,
+                "confidence": 0.8
+            },
+            "speech_path": "mock_speech.wav",  # Mock path
+            "asr_text": sample['question'],  # Use original question as mock ASR
+            "text_explanation": f"This is a mock medical explanation for the query: {sample['question']}. The image shows medical findings that are relevant to the question.",
+            "uncertainty": 0.3,
+            "speech_quality_score": 0.85
         }
+
+        # Check API key
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("⚠️  No GOOGLE_API_KEY found - will test error handling")
+
+        # Test run_validation function
+        print("3. Testing run_validation...")
+        try:
+            result = run_validation(test_state)
+
+            # Check result
+            expected_fields = ["needs_review", "critic_notes", "quality_scores"]
+            success = True
+
+            for field in expected_fields:
+                if field not in result:
+                    print(f"❌ Missing field: {field}")
+                    success = False
+                else:
+                    value = result[field]
+                    print(f"✅ {field}: {type(value).__name__}")
+
+                    if field == "needs_review":
+                        print(f"   Value: {value}")
+                    elif field == "critic_notes":
+                        preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+                        print(f"   Preview: {preview}")
+                    elif field == "quality_scores":
+                        if isinstance(value, dict):
+                            print(f"   Quality scores:")
+                            for score_name, score_value in value.items():
+                                print(f"     {score_name}: {score_value:.2f}")
+                        else:
+                            print(f"   Value: {value}")
+
+            if success:
+                print("✅ run_validation function works!")
+            else:
+                print("❌ run_validation function has issues")
+
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            print("   This might be expected if GOOGLE_API_KEY is not set or other dependencies missing")
+
+        print("\nTest complete!")
+
+
+    # Run the test
+    test_run_validation()

@@ -101,11 +101,13 @@ uv run python pipeline/run_pipeline.py
 .
 ├── pipeline/          # Python graph definition (LangGraph API)
 │   └── run_pipeline.py
-├── nodes/             # one folder per Node (Loader, Segmentation, …)
-├── data/              # sampling scripts & raw VQA‑RAD index
-├── registry.json      # lists every Node impl, version, resources
-├── runs/              # immutable artefacts  (git‑ignored)
-└── README.md          # this file
+├── nodes/                    # one folder per Node (Loader, Segmentation, …)
+├── data/                     # sampling scripts & raw VQA‑RAD index
+│   └── huggingface_loader.py # data loader for VQA‑RAD
+├── registry.json             # lists every Node impl, version, resources
+├── runs/                     # immutable artefacts  (git‑ignored)
+├── tests/                    # pytest script
+└── README.md                 # this file
 ```
 
 ---

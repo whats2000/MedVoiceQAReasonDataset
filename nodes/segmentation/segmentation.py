@@ -351,33 +351,91 @@ def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Test the segmentation
-    import tempfile
-    from PIL import Image
-    import numpy as np
+    """
+    Simple test for run_segmentation function using data loader.
+    """
+    import sys
+    from dotenv import load_dotenv
 
-    # Create a test image
-    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-        # Create the mock medical image
-        img_array = np.random.randint(0, 255, (512, 512), dtype=np.uint8)
-        test_image = Image.fromarray(img_array, mode='L')
-        test_image.save(tmp_file.name)
+    # Load environment variables
+    load_dotenv()
 
+    # Add the data directory to the path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "data"))
+
+    from data.huggingface_loader import HuggingFaceVQARADLoader
+
+
+    def test_run_segmentation():
+        """Simple test to check if run_segmentation function works."""
+        print("=" * 50)
+        print("Testing run_segmentation Function")
+        print("=" * 50)
+
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+
+        # Initialize data loader
+        print("1. Loading data...")
+        loader = HuggingFaceVQARADLoader(output_dir="data/vqarad_hf")
+
+        # Check if data exists
+        data_dir = Path("data/vqarad_hf")
+        if not data_dir.exists():
+            print("❌ Data directory not found. Please run the data loader first:")
+            print("   uv run .\\data\\huggingface_loader.py")
+            return
+
+        # Get first sample
+        print("2. Getting test sample...")
         try:
-            result = run_segmentation(
-                image_path=tmp_file.name,
-                text_query="Where is the heart in this chest X-ray?"
-            )
+            sample = loader.get_sample_by_index(0)
+            print(f"✅ Sample loaded: {sample['sample_id']}")
+            print(f"   Question: {sample['question']}")
+            print(f"   Image: {sample['image_path']}")
+        except Exception as e:
+            print(f"❌ Error loading sample: {e}")
+            return
 
-            print("Segmentation test results:")
-            print(f"  Visual box found: {result['visual_box'] is not None}")
-            if result['visual_box']:
-                bbox = result['visual_box']['bounding_box']
-                print(
-                    f"  Bounding box: x={bbox['x']:.2f}, y={bbox['y']:.2f}, w={bbox['width']:.2f}, h={bbox['height']:.2f}")
-                print(f"  Confidence: {result['visual_box']['confidence']:.2f}")
-            if 'error' in result:
-                print(f"  Error: {result['error']}")
+        # Check API key
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("⚠️  No GOOGLE_API_KEY found - will test error handling")
 
-        finally:
-            Path(tmp_file.name).unlink()  # Clean up
+        # Test run_segmentation function
+        print("3. Testing run_segmentation...")
+        try:
+            result = run_segmentation(sample['image_path'], sample['question'])
+
+            # Check result
+            if "visual_box" in result:
+                print("✅ run_segmentation function works!")
+                visual_box = result['visual_box']
+                if visual_box:
+                    print(f"   Visual box found:")
+                    if 'bounding_box' in visual_box:
+                        bbox = visual_box['bounding_box']
+                        print(f"     Coordinates: x={bbox.get('x', 'N/A'):.3f}, y={bbox.get('y', 'N/A'):.3f}")
+                        print(f"     Size: w={bbox.get('width', 'N/A'):.3f}, h={bbox.get('height', 'N/A'):.3f}")
+                    print(f"     Confidence: {visual_box.get('confidence', 'N/A')}")
+                    print(f"     Description: {visual_box.get('region_description', 'N/A')}")
+                else:
+                    print("   No visual box identified (may be expected if no API key)")
+
+                print(f"   Segmenter: {result.get('segmenter', 'N/A')}")
+                print(f"   Version: {result.get('segmenter_version', 'N/A')}")
+                print(f"   Image processed: {result.get('image_processed', 'N/A')}")
+
+                if "error" in result:
+                    print(f"   Error: {result['error']}")
+            else:
+                print("❌ Missing 'visual_box' field in result")
+
+        except Exception as e:
+            print(f"❌ Error: {e}")
+
+        print("\nTest complete!")
+
+
+    # Run the test
+    test_run_segmentation()
