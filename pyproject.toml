@@ -74,6 +74,11 @@ jupyter = [
     "matplotlib>=3.7.0",
     "seaborn>=0.12.0",
 ]
+ui = [
+    "streamlit>=1.28.0",
+    "plotly>=5.15.0",
+    "streamlit-plotly-events>=0.0.6",
+]
 cpu = [
   "torch>=2.7.0",
   "torchvision>=0.22.0",
@@ -108,6 +113,7 @@ conflicts = [
 [project.scripts]
 medvoice-pipeline = "pipeline.run_pipeline:main"
 medvoice-test = "scripts.test_runner:main"
+medvoice-ui = "ui.launch:main"
 
 [project.urls]
 Homepage = "https://github.com/whats2000/MedVoiceQAReasonDataset"
@@ -115,7 +121,7 @@ Repository = "https://github.com/whats2000/MedVoiceQAReasonDataset"
 Issues = "https://github.com/whats2000/MedVoiceQAReasonDataset/issues"
 
 [tool.setuptools]
-packages = ["pipeline", "nodes", "data", "scripts"]
+packages = ["pipeline", "nodes", "data", "scripts", "ui"]
 
 [tool.black]
 line-length = 88

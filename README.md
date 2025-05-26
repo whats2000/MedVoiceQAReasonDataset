@@ -26,10 +26,11 @@ flowchart LR
     Segmentation --> ASR_TTS
     ASR_TTS --> Explanation
     Explanation --> Validation
-    Validation -- needs_review = true --> Human_Review
+    Validation --> END
 ```
 
 *Each rectangle is a **Node** run by **LangGraph**; edges carry a single JSON blob.*
+*Human review is handled separately via the web UI after processing.*
 
 ---
 
@@ -93,6 +94,24 @@ uv run python pipeline/run_pipeline.py --limit 50
 uv run python pipeline/run_pipeline.py
 ```
 
+### 7 · Human verification via UI
+
+After processing, review the generated data through the web interface:
+
+```bash
+# Install UI dependencies
+uv sync --extra ui
+
+# Launch the verification interface
+uv run medvoice-ui
+```
+
+The interface opens at `http://localhost:8501` where you can:
+- Review generated images, audio, and explanations
+- Approve/reject samples for the final dataset  
+- Mark quality issues and add review notes
+- Export validated dataset for publication
+
 ---
 
 ## 🏗️ Repo layout
@@ -104,6 +123,10 @@ uv run python pipeline/run_pipeline.py
 ├── nodes/                    # one folder per Node (Loader, Segmentation, …)
 ├── data/                     # sampling scripts & raw VQA‑RAD index
 │   └── huggingface_loader.py # data loader for VQA‑RAD
+├── ui/                       # Human verification web interface
+│   ├── review_interface.py   # Streamlit app for sample review
+│   ├── launch.py            # UI launcher script
+│   └── README.md            # UI documentation
 ├── registry.json             # lists every Node impl, version, resources
 ├── runs/                     # immutable artefacts  (git‑ignored)
 ├── tests/                    # pytest script
@@ -148,7 +171,7 @@ Each Node appends `node_name` and `node_version` for full provenance.
 | Consistency        | 5× self‑consistency      | **≥ 80%**  |
 | Overall            | `needs_review = false`   | **≥ 80%**  |
 
-Failing samples enter the `Human_Review` branch for manual triage.
+Samples are processed completely by the pipeline, then reviewed through the web UI interface.
 
 ---
 

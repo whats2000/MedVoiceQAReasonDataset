@@ -7,3 +7,4 @@
 .env
 /runs
 /.vscode
+/data/vqarad/hf_cache

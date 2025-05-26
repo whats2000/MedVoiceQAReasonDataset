@@ -5,7 +5,6 @@ Test script for the complete MedVoiceQA pipeline.
 This script tests the pipeline with a sample input to ensure all nodes work correctly.
 """
 
-import asyncio
 import logging
 import pytest
 import sys
@@ -15,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from pipeline.graph import create_medvoice_pipeline, PipelineState
+from pipeline.graph import create_medvoice_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ async def test_pipeline_imports():
     from nodes.asr_tts import run_asr_tts
     from nodes.explanation import run_explanation
     from nodes.validation import run_validation
-    from nodes.human_review import run_human_review
 
     logger.info("All modules imported successfully!")
 
