@@ -37,6 +37,10 @@ flowchart LR
 
 ### 1 · Clone & install with uv
 
+> [!NOTE
+> If you have not installed `uv`, please do so first:
+> [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
+
 ```bash
 git clone https://github.com/whats2000/MedVoiceQAReasonDataset.git
 cd MedVoiceQAReasonDataset
