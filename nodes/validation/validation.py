@@ -25,7 +25,6 @@ class GeminiValidationDuo:
     def __init__(self, model: str = "gemini-2.0-flash-exp"):
         """Initialize the Gemini validation system."""
         self.model = model
-        self.client = None
 
         # Initialize Gemini client
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -283,6 +282,10 @@ CRITIC_NOTES: [detailed feedback]
                 model=self.model,
                 contents=[prompt, image_part]
             )
+
+            if not response or not response.text:
+                raise ValueError("No response text received from Gemini model")
+            
             response_text = response.text.strip()
 
             # Parse response
@@ -308,7 +311,7 @@ CRITIC_NOTES: [detailed feedback]
             }
 
 
-def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
+def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, str | float | Dict[str, Any]]:
     """
     LangGraph node function for pipeline validation.
     
@@ -323,8 +326,8 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Extract required inputs
         image_path = state.get("image_path")
-        text_query = state.get("text_query")
-        visual_box = state.get("visual_box")
+        text_query = state.get("text_query", "")
+        visual_box = state.get("visual_box", {})
         speech_path = state.get("speech_path")
         asr_text = state.get("asr_text")
         text_explanation = state.get("text_explanation")
@@ -364,14 +367,14 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
 
         # Perform validation
         needs_review, critic_notes, quality_scores = validator.validate_pipeline_output(
-            image_path=image_path,
-            text_query=text_query,
-            visual_box=visual_box,
-            speech_path=speech_path,
-            asr_text=asr_text,
-            text_explanation=text_explanation,
-            uncertainty=uncertainty,
-            speech_quality_score=speech_quality_score
+            image_path=image_path,  # type: ignore
+            text_query=text_query,  # type: ignore
+            visual_box=visual_box,  # type: ignore
+            speech_path=speech_path,  # type: ignore
+            asr_text=asr_text,  # type: ignore
+            text_explanation=text_explanation,  # type: ignore
+            uncertainty=uncertainty,  # type: ignore
+            speech_quality_score=speech_quality_score  # type: ignore
         )
 
         logger.info(f"Validation complete. Needs review: {needs_review}")

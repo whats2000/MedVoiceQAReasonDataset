@@ -26,8 +26,7 @@ class GeminiReasoningEngine:
     def __init__(self, model: str = "gemini-2.0-flash-exp"):
         """Initialize the Gemini reasoning engine."""
         self.model = model
-        self.client = None
-
+        
         # Initialize Gemini client
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
@@ -167,6 +166,9 @@ UNCERTAINTY_SCORE: [float between 0.0 and 1.0]
                 contents=[prompt, image_part]
             )
 
+            if not response or not response.text:
+                raise ValueError("No response text received from Gemini model")
+            
             reasoning_text = response.text.strip()
 
             # Extract uncertainty score

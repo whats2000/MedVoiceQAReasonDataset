@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from PIL import Image
 from google import genai
 from google.genai import types
 
@@ -33,7 +34,6 @@ class GeminiVisionSegmenter:
             model: Gemini model to use for vision tasks
         """
         self.model = model
-        self.client = None
 
         # Initialize Gemini client
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -176,33 +176,19 @@ If no specific region can be identified or the entire image is relevant, you may
             API response text
         """
         try:
-            # Prepare the content with both text and image
-            contents = [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": image_data
-                            }
-                        }
-                    ]
-                }
-            ]
-
-            # Generate content using Gemini
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    temperature=0.1,  # Low temperature for consistent outputs
-                    max_output_tokens=1000,
-                )
+            # Create image part from base64 data
+            image_part = types.Part.from_bytes(
+                data=base64.b64decode(image_data),
+                mime_type="image/jpeg"
             )
 
-            return response.text
+            # Generate content using modern Gemini API
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=[prompt, image_part]
+            )
+
+            return response.text if response.text else ""
 
         except Exception as e:
             logger.error(f"Gemini API call failed: {e}")
