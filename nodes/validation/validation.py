@@ -38,9 +38,9 @@ class GeminiValidationDuo:
         self.quality_thresholds = {
             "speech_quality_min": 0.7,
             "uncertainty_max": 0.3,  # High uncertainty triggers review
-            "explanation_min_length": 50,
-            "visual_box_completeness": True
+            "explanation_min_length": 50
         }
+
         # Validation prompt template
         self.validation_prompt = """
 You are a medical AI quality assurance specialist. Evaluate this complete medical image analysis pipeline output.
@@ -220,10 +220,9 @@ CRITIC_NOTES: [detailed feedback]
                 f"Short explanation: {len(explanation)} chars < {self.quality_thresholds['explanation_min_length']}")
 
         # Check visual box completeness
-        required_box_keys = ['x1', 'y1', 'x2', 'y2']
-        missing_keys = [key for key in required_box_keys if key not in visual_box]
-        if missing_keys:
-            issues.append(f"Incomplete visual box: missing {missing_keys}")
+        visual_box_issues = self._validate_visual_box_structure(visual_box)
+        if visual_box_issues:
+            issues.append(visual_box_issues)
 
         needs_review = len(issues) > 0
         notes = "; ".join(issues) if issues else "All heuristic checks passed"
@@ -309,6 +308,51 @@ CRITIC_NOTES: [detailed feedback]
                 'consistency_score': 0.2,
                 'overall_quality': 0.2
             }
+
+    @staticmethod
+    def _validate_visual_box_structure(visual_box: Dict[str, Any]) -> str:
+        """Validate the structure of the visual box data."""
+        if not isinstance(visual_box, dict):
+            return "Visual box is not a dictionary"
+
+        # Check for bounding_box key
+        if 'bounding_box' not in visual_box:
+            return "Missing 'bounding_box' key in visual_box"
+
+        bounding_box = visual_box['bounding_box']
+        if not isinstance(bounding_box, dict):
+            return "bounding_box is not a dictionary"
+
+        # Check for required bounding box coordinates
+        required_coords = ['x', 'y', 'width', 'height']
+        missing_coords = [coord for coord in required_coords if coord not in bounding_box]
+        if missing_coords:
+            return f"Missing bounding box coordinates: {missing_coords}"
+
+        # Validate coordinate values are numeric and within reasonable ranges
+        try:
+            x = float(bounding_box['x'])
+            y = float(bounding_box['y'])
+            width = float(bounding_box['width'])
+            height = float(bounding_box['height'])
+
+            # Check if coordinates are reasonable (0-1 for normalized coordinates)
+            if not (0 <= x <= 1 and 0 <= y <= 1 and 0 < width <= 1 and 0 < height <= 1):
+                return f"Bounding box coordinates out of range: x={x}, y={y}, width={width}, height={height}"
+
+        except (ValueError, TypeError):
+            return "Bounding box coordinates are not valid numbers"
+
+        # Check for confidence score
+        if 'confidence' in visual_box:
+            try:
+                confidence = float(visual_box['confidence'])
+                if not (0 <= confidence <= 1):
+                    return f"Confidence score out of range: {confidence}"
+            except (ValueError, TypeError):
+                return "Confidence score is not a valid number"
+
+        return ""  # No issues found
 
 
 def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, str | float | Dict[str, Any]]:
@@ -444,11 +488,16 @@ if __name__ == "__main__":
             "image_path": sample['image_path'],
             "text_query": sample['question'],
             "visual_box": {
-                "x1": 100,
-                "y1": 100,
-                "x2": 400,
-                "y2": 400,
-                "confidence": 0.8
+                "bounding_box": {
+                    "x": 100,
+                    "y": 100,
+                    "width": 300,
+                    "height": 300,
+                    "confidence": 0.8
+                },
+                "confidence": 0.85,  # Mock confidence score
+                "region_description": "Lung region with potential abnormalities",  # Mock description
+                "relevance_reasoning": "This region is relevant to the query as it contains potential abnormalities related to the patient's condition."
             },
             "speech_path": "mock_speech.wav",  # Mock path
             "asr_text": sample['question'],  # Use original question as mock ASR
