@@ -41,8 +41,21 @@ flowchart LR
 git clone https://github.com/whats2000/MedVoiceQAReasonDataset.git
 cd MedVoiceQAReasonDataset
 
-# Install with uv (automatically creates virtual environment)
-uv sync
+# Check CUDA version
+nvidia-smi
+# It should show something like this:
+# +-----------------------------------------------------------------------------------------+
+# | NVIDIA-SMI 560.94                 Driver Version: 560.94         CUDA Version: 12.6     |
+# |-----------------------------------------+------------------------+----------------------+
+
+# Install with uv (Please pick the right one for your CUDA version)
+uv sync --extra cpu
+# Or if you using cuda 11.8
+uv sync --extra cu118 
+# Or if you using cuda 12.6
+uv sync --extra cu126
+# Or if you using cuda 12.8
+uv sync --extra cu128
 ```
 
 ### 2 · Prepare secrets
