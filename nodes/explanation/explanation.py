@@ -149,7 +149,7 @@ UNCERTAINTY_SCORE: [float between 0.0 and 1.0]
             logger.info(f"Generating reasoning for query: {text_query}")
 
             # Format visual box information
-            box_str = f"x1={visual_box.get('x1', 'N/A')}, y1={visual_box.get('y1', 'N/A')}, x2={visual_box.get('x2', 'N/A')}, y2={visual_box.get('y2', 'N/A')}"
+            box_str = f"x={visual_box['bounding_box']['x']}, y={visual_box['bounding_box']['y']}, width={visual_box['bounding_box']['width']}, height={visual_box['bounding_box']['height']}"
 
             # Prepare prompt
             prompt = self.reasoning_prompt.format(
@@ -309,11 +309,15 @@ if __name__ == "__main__":
             "image_path": sample['image_path'],
             "text_query": sample['question'],
             "visual_box": {
-                "x1": 100,
-                "y1": 100,
-                "x2": 400,
-                "y2": 400,
-                "confidence": 0.8
+                "bounding_box": {
+                    "x": 0.15,
+                    "y": 0.35,
+                    "width": 0.3,
+                    "height": 0.35,
+                },
+                "confidence": 0.85,  # Mock confidence score
+                "region_description": "Lung region with potential abnormalities",  # Mock description
+                "relevance_reasoning": "This region is relevant to the query as it contains potential abnormalities related to the patient's condition."
             }
         }
 
