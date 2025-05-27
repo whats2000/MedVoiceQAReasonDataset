@@ -10,8 +10,20 @@ from typing import Dict, Any, Tuple
 
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+
+class ValidationResult(BaseModel):
+    """Model for validation results with proper field constraints."""
+    needs_review: bool
+    visual_localization_quality: float = Field(..., ge=0.0, le=1.0)
+    speech_processing_quality: float = Field(..., ge=0.0, le=1.0)
+    reasoning_quality: float = Field(..., ge=0.0, le=1.0)
+    consistency_score: float = Field(..., ge=0.0, le=1.0)
+    overall_quality: float = Field(..., ge=0.0, le=1.0)
+    critic_notes: str
 
 
 class GeminiValidationDuo:
@@ -39,9 +51,7 @@ class GeminiValidationDuo:
             "speech_quality_min": 0.7,
             "uncertainty_max": 0.3,  # High uncertainty triggers review
             "explanation_min_length": 50
-        }
-
-        # Validation prompt template
+        }  # Validation prompt template for structured output
         self.validation_prompt = """
 You are a medical AI quality assurance specialist. Evaluate this complete medical image analysis pipeline output.
 
@@ -76,25 +86,17 @@ EVALUATION CRITERIA:
    - Is the uncertainty score reasonable?
    - High uncertainty (>0.7) may indicate quality issues
 
-PROVIDE ASSESSMENT:
-1. NEEDS_HUMAN_REVIEW: [true/false] - Should this sample be flagged for human review?
-2. QUALITY_SCORES: Provide scores 0.0-1.0 for:
-   - visual_localization_quality
-   - speech_processing_quality  
-   - reasoning_quality
-   - consistency_score
-   - overall_quality
+Provide a comprehensive assessment with:
+- needs_review: boolean indicating if human review is required
+- Quality scores (0.0-1.0) for each component
+- Detailed critic notes explaining your assessment
 
-3. CRITIC_NOTES: Detailed feedback on any issues found
-
-Format your response as:
-NEEDS_REVIEW: [true/false]
-VISUAL_LOCALIZATION_QUALITY: [0.0-1.0]
-SPEECH_PROCESSING_QUALITY: [0.0-1.0]
-REASONING_QUALITY: [0.0-1.0]
-CONSISTENCY_SCORE: [0.0-1.0]
-OVERALL_QUALITY: [0.0-1.0]
-CRITIC_NOTES: [detailed feedback]
+Consider flagging for review if:
+- Visual localization seems irrelevant or has poor coordinates
+- Speech processing quality is below 0.7
+- Medical reasoning is unclear, too brief, or medically unsound
+- High uncertainty (>0.7) without clear justification
+- Inconsistencies between pipeline components
 """
 
     @staticmethod
@@ -119,81 +121,6 @@ CRITIC_NOTES: [detailed feedback]
         except Exception as e:
             logger.error(f"Failed to load image {image_path}: {e}")
             raise
-
-    @staticmethod
-    def _parse_validation_response(response_text: str) -> Tuple[bool, str, Dict[str, float]]:
-        """Parse validation response into structured data."""
-        try:
-            lines = response_text.split('\n')
-            needs_review = False
-            critic_notes = ""
-            quality_scores = {}
-
-            for line in lines:
-                line = line.strip()
-                if line.upper().startswith('NEEDS_REVIEW:'):
-                    value = line.split(':', 1)[1].strip().lower()
-                    needs_review = value in ['true', '1', 'yes']
-
-                elif line.upper().startswith('VISUAL_LOCALIZATION_QUALITY:'):
-                    try:
-                        score = float(line.split(':', 1)[1].strip())
-                        quality_scores['visual_localization_quality'] = max(0.0, min(1.0, score))
-                    except ValueError:
-                        quality_scores['visual_localization_quality'] = 0.5
-
-                elif line.upper().startswith('SPEECH_PROCESSING_QUALITY:'):
-                    try:
-                        score = float(line.split(':', 1)[1].strip())
-                        quality_scores['speech_processing_quality'] = max(0.0, min(1.0, score))
-                    except ValueError:
-                        quality_scores['speech_processing_quality'] = 0.5
-
-                elif line.upper().startswith('REASONING_QUALITY:'):
-                    try:
-                        score = float(line.split(':', 1)[1].strip())
-                        quality_scores['reasoning_quality'] = max(0.0, min(1.0, score))
-                    except ValueError:
-                        quality_scores['reasoning_quality'] = 0.5
-
-                elif line.upper().startswith('CONSISTENCY_SCORE:'):
-                    try:
-                        score = float(line.split(':', 1)[1].strip())
-                        quality_scores['consistency_score'] = max(0.0, min(1.0, score))
-                    except ValueError:
-                        quality_scores['consistency_score'] = 0.5
-
-                elif line.upper().startswith('OVERALL_QUALITY:'):
-                    try:
-                        score = float(line.split(':', 1)[1].strip())
-                        quality_scores['overall_quality'] = max(0.0, min(1.0, score))
-                    except ValueError:
-                        quality_scores['overall_quality'] = 0.5
-
-                elif line.upper().startswith('CRITIC_NOTES:'):
-                    critic_notes = line.split(':', 1)[1].strip()
-
-            # Ensure all required scores are present
-            required_scores = [
-                'visual_localization_quality', 'speech_processing_quality',
-                'reasoning_quality', 'consistency_score', 'overall_quality'
-            ]
-            for score_name in required_scores:
-                if score_name not in quality_scores:
-                    quality_scores[score_name] = 0.5  # Default medium score
-
-            return needs_review, critic_notes, quality_scores
-
-        except Exception as e:
-            logger.error(f"Failed to parse validation response: {e}")
-            # Return conservative defaults
-            return True, f"Parsing error: {str(e)}", {
-                'visual_localization_quality': 0.3,
-                'speech_processing_quality': 0.3,
-                'reasoning_quality': 0.3,
-                'consistency_score': 0.3,
-                'overall_quality': 0.3
-            }
 
     def _apply_heuristic_checks(
         self,
@@ -276,19 +203,47 @@ CRITIC_NOTES: [detailed feedback]
             # Load image for Gemini API
             image_part = self._load_image_for_genai(image_path)
 
-            # Generate validation assessment using modern API
+            # Generate validation assessment using structured output
+            generation_config = {
+                "response_mime_type": "application/json",
+                "response_schema": ValidationResult,
+            }
+
             response = self.client.models.generate_content(
                 model=self.model,
-                contents=[prompt, image_part]
+                contents=[prompt, image_part],
+                config=generation_config
             )
 
-            if not response or not response.text:
-                raise ValueError("No response text received from Gemini model")
+            if not response or not response.parsed:
+                raise ValueError("No structured response received from Gemini model")
 
-            response_text = response.text.strip()
+            # Extract validation result from structured response
+            validation_result = response.parsed
 
-            # Parse response
-            ai_needs_review, ai_notes, quality_scores = self._parse_validation_response(response_text)
+            # Handle the structured response (could be ValidationResult instance or dict)
+            if isinstance(validation_result, ValidationResult):
+                ai_needs_review = validation_result.needs_review
+                ai_notes = validation_result.critic_notes
+                quality_scores = {
+                    'visual_localization_quality': validation_result.visual_localization_quality,
+                    'speech_processing_quality': validation_result.speech_processing_quality,
+                    'reasoning_quality': validation_result.reasoning_quality,
+                    'consistency_score': validation_result.consistency_score,
+                    'overall_quality': validation_result.overall_quality
+                }
+            elif isinstance(validation_result, dict):
+                ai_needs_review = validation_result.get('needs_review', True)
+                ai_notes = validation_result.get('critic_notes', 'No structured response received')
+                quality_scores = {
+                    'visual_localization_quality': validation_result.get('visual_localization_quality', 0.3),
+                    'speech_processing_quality': validation_result.get('speech_processing_quality', 0.3),
+                    'reasoning_quality': validation_result.get('reasoning_quality', 0.3),
+                    'consistency_score': validation_result.get('consistency_score', 0.3),
+                    'overall_quality': validation_result.get('overall_quality', 0.3)
+                }
+            else:
+                raise ValueError(f"Unexpected response type: {type(validation_result)}")
 
             # Combine heuristic and AI assessments
             final_needs_review = heuristic_review or ai_needs_review
@@ -315,7 +270,7 @@ CRITIC_NOTES: [detailed feedback]
         if not isinstance(visual_box, dict):
             return "Visual box is not a dictionary"
 
-        # Check for bounding_box key
+        # Check for the bounding_box key
         if 'bounding_box' not in visual_box:
             return "Missing 'bounding_box' key in visual_box"
 
