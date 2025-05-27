@@ -241,7 +241,7 @@ class MedVoiceQAReviewer:
 
                                 st.divider()
 
-                                # Manual bounding box adjustment
+                                # Manual bounding box adjustment with side-by-side layout
                                 st.write("**🔧 Manual Bounding Box Adjustment:**")
                                 st.caption(
                                     "Adjust the bounding box coordinates if the AI localization is incorrect. All values should be between 0 and 1 (normalized coordinates).")
@@ -249,8 +249,12 @@ class MedVoiceQAReviewer:
                                 # Get existing manual adjustments or use original values
                                 existing_bbox_edit = existing_review.get("manual_bbox", bbox)
 
-                                bbox_col1, bbox_col2 = st.columns(2)
-                                with bbox_col1:
+                                # Create side-by-side layout: controls on left, preview on right
+                                config_col, preview_col = st.columns([1, 1])
+                                with config_col:
+                                    st.write("**⚙️ Coordinates:**")
+
+                                    # Input controls without nested columns
                                     manual_x = st.number_input(
                                         "X coordinate",
                                         min_value=0.0,
@@ -269,7 +273,6 @@ class MedVoiceQAReviewer:
                                         key=f"manual_y_{sample_idx}",
                                         help="Top edge of bounding box (0 = top edge, 1 = bottom edge)"
                                     )
-                                with bbox_col2:
                                     manual_width = st.number_input(
                                         "Width",
                                         min_value=0.01,
@@ -289,14 +292,45 @@ class MedVoiceQAReviewer:
                                         help="Height of bounding box"
                                     )
 
-                                # Validation for bounding box
-                                if manual_x + manual_width > 1.0:
-                                    st.warning("⚠️ Bounding box extends beyond image width (X + Width > 1.0)")
-                                if manual_y + manual_height > 1.0:
-                                    st.warning("⚠️ Bounding box extends beyond image height (Y + Height > 1.0)")
+                                    # Validation for bounding box
+                                    if manual_x + manual_width > 1.0:
+                                        st.warning("⚠️ Box extends beyond image width")
+                                    if manual_y + manual_height > 1.0:
+                                        st.warning("⚠️ Box extends beyond image height")
 
-                                # Show preview of manual bounding box
-                                if st.button(f"🔍 Preview Manual Bounding Box", key=f"preview_bbox_{sample_idx}"):
+                                    # Check if manual coordinates differ from original
+                                    original_bbox = bbox
+                                    coords_changed = (
+                                        manual_x != original_bbox.get('x', 0.0) or
+                                        manual_y != original_bbox.get('y', 0.0) or
+                                        manual_width != original_bbox.get('width', 0.1) or
+                                        manual_height != original_bbox.get('height', 0.1)
+                                    )
+
+                                    if coords_changed:
+                                        st.info("📝 Modified from original")
+
+                                    # Show coordinate summary
+                                    coord_summary = f"**Current:** X={manual_x:.3f}, Y={manual_y:.3f}, W={manual_width:.3f}, H={manual_height:.3f}"
+                                    st.caption(coord_summary)
+
+                                    # Option to reset to original coordinates
+                                    if coords_changed:
+                                        if st.button(f"🔄 Reset to Original", key=f"reset_bbox_{sample_idx}"):
+                                            # Update session state to original values
+                                            st.session_state[f"manual_x_{sample_idx}"] = original_bbox.get('x', 0.0)
+                                            st.session_state[f"manual_y_{sample_idx}"] = original_bbox.get('y', 0.0)
+                                            st.session_state[f"manual_width_{sample_idx}"] = original_bbox.get('width',
+                                                                                                               0.1)
+                                            st.session_state[f"manual_height_{sample_idx}"] = original_bbox.get(
+                                                'height', 0.1)
+                                            st.rerun()
+
+                                with preview_col:
+                                    st.write("**🔍 Live Preview:**")
+                                    st.caption("Updates automatically as you adjust coordinates")
+
+                                    # Always show the preview with current coordinates
                                     manual_bbox_data = {
                                         "bounding_box": {
                                             "x": manual_x,
@@ -305,12 +339,20 @@ class MedVoiceQAReviewer:
                                             "height": manual_height
                                         },
                                         "confidence": confidence,
-                                        "manual_adjustment": True
+                                        "manual_adjustment": coords_changed
                                     }
+
                                     try:
                                         preview_image = self.draw_bounding_box_on_image(image, manual_bbox_data)
-                                        st.image(preview_image, caption="Preview with Manual Bounding Box",
-                                                 use_container_width=True)
+
+                                        # Use different caption based on whether coordinates changed
+                                        if coords_changed:
+                                            caption = "🔧 With Manual Adjustments"
+                                        else:
+                                            caption = "👁️ Current Coordinates"
+
+                                        st.image(preview_image, caption=caption, use_container_width=True)
+
                                     except Exception as e:
                                         st.error(f"Error generating preview: {e}")
 
