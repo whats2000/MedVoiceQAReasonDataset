@@ -249,19 +249,26 @@ class MedVoiceQAReviewer:
                                 # Get existing manual adjustments or use original values
                                 existing_bbox_edit = existing_review.get("manual_bbox", bbox)
 
+                                # Handle reset functionality with unique widget keys
+                                reset_counter_key = f"reset_counter_{sample_idx}"
+                                if reset_counter_key not in st.session_state:
+                                    st.session_state[reset_counter_key] = 0
+
+                                reset_counter = st.session_state[reset_counter_key]
+
                                 # Create side-by-side layout: controls on left, preview on right
                                 config_col, preview_col = st.columns([1, 1])
                                 with config_col:
                                     st.write("**⚙️ Coordinates:**")
 
-                                    # Input controls without nested columns
+                                    # Input controls with dynamic keys that change on reset
                                     manual_x = st.number_input(
                                         "X coordinate",
                                         min_value=0.0,
                                         max_value=1.0,
                                         value=float(existing_bbox_edit.get('x', bbox.get('x', 0.0))),
                                         step=0.01,
-                                        key=f"manual_x_{sample_idx}",
+                                        key=f"manual_x_{sample_idx}_{reset_counter}",
                                         help="Left edge of bounding box (0 = left edge, 1 = right edge)"
                                     )
                                     manual_y = st.number_input(
@@ -270,7 +277,7 @@ class MedVoiceQAReviewer:
                                         max_value=1.0,
                                         value=float(existing_bbox_edit.get('y', bbox.get('y', 0.0))),
                                         step=0.01,
-                                        key=f"manual_y_{sample_idx}",
+                                        key=f"manual_y_{sample_idx}_{reset_counter}",
                                         help="Top edge of bounding box (0 = top edge, 1 = bottom edge)"
                                     )
                                     manual_width = st.number_input(
@@ -279,7 +286,7 @@ class MedVoiceQAReviewer:
                                         max_value=1.0,
                                         value=float(existing_bbox_edit.get('width', bbox.get('width', 0.1))),
                                         step=0.01,
-                                        key=f"manual_width_{sample_idx}",
+                                        key=f"manual_width_{sample_idx}_{reset_counter}",
                                         help="Width of bounding box"
                                     )
                                     manual_height = st.number_input(
@@ -288,7 +295,7 @@ class MedVoiceQAReviewer:
                                         max_value=1.0,
                                         value=float(existing_bbox_edit.get('height', bbox.get('height', 0.1))),
                                         step=0.01,
-                                        key=f"manual_height_{sample_idx}",
+                                        key=f"manual_height_{sample_idx}_{reset_counter}",
                                         help="Height of bounding box"
                                     )
 
@@ -316,14 +323,10 @@ class MedVoiceQAReviewer:
 
                                     # Option to reset to original coordinates
                                     if coords_changed:
-                                        if st.button(f"🔄 Reset to Original", key=f"reset_bbox_{sample_idx}"):
-                                            # Update session state to original values
-                                            st.session_state[f"manual_x_{sample_idx}"] = original_bbox.get('x', 0.0)
-                                            st.session_state[f"manual_y_{sample_idx}"] = original_bbox.get('y', 0.0)
-                                            st.session_state[f"manual_width_{sample_idx}"] = original_bbox.get('width',
-                                                                                                               0.1)
-                                            st.session_state[f"manual_height_{sample_idx}"] = original_bbox.get(
-                                                'height', 0.1)
+                                        if st.button(f"🔄 Reset to Original",
+                                                     key=f"reset_bbox_{sample_idx}_{reset_counter}"):
+                                            # Increment the reset counter to force new widgets with original values
+                                            st.session_state[reset_counter_key] += 1
                                             st.rerun()
 
                                 with preview_col:
