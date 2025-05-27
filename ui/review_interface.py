@@ -196,7 +196,7 @@ class MedVoiceQAReviewer:
                     image_path = Path.cwd() / image_path
                 else:
                     image_path = Path(image_path)
-                      if image_path.exists():
+                if image_path.exists():
                     try:
                         image = Image.open(image_path)
                         visual_box = output_data.get("visual_box")
