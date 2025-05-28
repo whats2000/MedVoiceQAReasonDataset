@@ -194,7 +194,7 @@ def run_pipeline(
             console.print("[yellow]Loading samples from Hugging Face VQA-RAD dataset...[/yellow]")
 
             all_samples = []
-            sample_limit = limit or 50  # Default to 50 samples if no limit specified
+            sample_limit = limit or 300  # Default to 300 samples if no limit specified
 
             for i in range(sample_limit):
                 try:

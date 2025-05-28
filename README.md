@@ -151,7 +151,7 @@ No YAML involved—configuration is pure **Python + JSON**, making edits IDE‑f
 ## 📝 Node Contracts
 
 | Node         | Consumes                                 | Produces                                          |
-| ------------ | ---------------------------------------- | ------------------------------------------------- |
+|--------------|------------------------------------------|---------------------------------------------------|
 | Loader       | `sample_id`                              | `image_path`, `text_query`                        |
 | Segmentation | `image_path`, `text_query`               | `visual_box`                                      |
 | ASR / TTS    | `text_query`                             | `speech_path`, `asr_text`, `speech_quality_score` |
