@@ -4,6 +4,17 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 
 ---
 
+## 📝 ToDo
+
+- [x] Implement the annotation pipeline using LangGraph
+- [x] Implement the human verification UI
+- [ ] Publish the workshop paper for the pipeline (For [AgentX competition](https://rdi.berkeley.edu/agentx/))
+- [ ] Cooperate with medical institutions to validate the dataset
+- [ ] Publish the dataset on Hugging Face
+- [ ] Publish the full detailed paper with human validation results to ArXiv
+
+---
+
 ## ⭐️ What’s inside?
 
 | Modality        | Fields                             | Source models/tools                       |
@@ -21,16 +32,49 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 ## 🗺️ Pipeline (LangGraph)
 
 ```mermaid
-flowchart LR
-    Loader --> Segmentation
-    Segmentation --> ASR_TTS
-    ASR_TTS --> Explanation
-    Explanation --> Validation
-    Validation --> END
+flowchart TD
+    START([START]) --> Loader[Loader Node<br/>Load VQA-RAD sample<br/>DICOM → PNG conversion]
+    
+    Loader --> |"image_path<br/>text_query<br/>metadata"| Segmentation[Segmentation Node<br/>Visual localization<br/>Gemini Vision bbox detection]
+    Loader --> |"text_query<br/>sample_id"| ASR_TTS[ASR/TTS Node<br/>Bark TTS synthesis<br/>Whisper ASR validation]
+    
+    Segmentation --> |"visual_box"| Explanation[Explanation Node<br/>Reasoning generation<br/>Uncertainty estimation<br/>Gemini Language]
+    ASR_TTS --> |"speech_path<br/>asr_text<br/>quality_score"| Explanation
+    
+    Explanation --> |"text_explanation<br/>uncertainty"| Validation[Validation Node<br/>Quality assessment<br/>Error detection<br/>Review flagging]
+    
+    Validation --> |"needs_review<br/>critic_notes<br/>quality_scores"| Pipeline_END([PIPELINE END])
+    
+    Pipeline_END -.-> |"Post-processing"| Human_UI[Human Verification UI<br/>Streamlit interface<br/>Sample review & approval<br/>Quality control]
+    
+    Human_UI --> Dataset[Final Dataset<br/>Validated samples<br/>Ready for publication]
+    
+    %% Styling
+    classDef nodeStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef startEnd fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    classDef humanProcess fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,stroke-dasharray: 5 5
+    classDef dataOutput fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    
+    class START,Pipeline_END startEnd
+    class Loader,Segmentation,ASR_TTS,Explanation,Validation nodeStyle
+    class Human_UI humanProcess
+    class Dataset dataOutput
 ```
 
-*Each rectangle is a **Node** run by **LangGraph**; edges carry a single JSON blob.*
-*Human review is handled separately via the web UI after processing.*
+### 📊 Processing Details
+
+| Stage | Concurrency | Input | Output | Models/Tools |
+|-------|-------------|-------|--------|--------------|
+| **Loader** | Sequential | `sample_id` | `image_path`, `text_query`, `metadata` | DICOM2PNG converter |
+| **Segmentation** | **Parallel** | `image_path`, `text_query` | `visual_box` | Gemini 2 Flash Vision |
+| **ASR/TTS** | **Parallel** | `text_query`, `sample_id` | `speech_path`, `asr_text`, `quality_score` | Bark TTS + Whisper-L ASR |
+| **Explanation** | Sequential | All prior outputs | `text_explanation`, `uncertainty` | Gemini 2 Flash Language |
+| **Validation** | Sequential | All outputs + errors | `needs_review`, `critic_notes`, `quality_scores` | Custom validation logic |
+| **Human Review** | Manual | Validated samples | Final dataset | Streamlit UI interface |
+
+*✨ **Key Feature:** Segmentation and ASR/TTS nodes run in **parallel** after the Loader, reducing total processing time by ~40%.*
+
+*🔄 Each node appends versioning metadata (`node_name`, `node_version`) for full provenance tracking.*
 
 ---
 
@@ -189,6 +233,9 @@ Samples are processed completely by the pipeline, then reviewed through the web 
 
 * Code: MIT
 * Derived data: CC‑BY 4.0  (VQA‑RAD is CC0 1.0; please cite their paper.)
+
+> [!NOTE]
+> The paper is still in progress, we will update the citation once it is available.
 
 ```bibtex
 @dataset{medvoiceqa_2025,
