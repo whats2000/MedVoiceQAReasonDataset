@@ -1,4 +1,4 @@
-# MedVoiceQAReasonDataset
+# MVVQ-RAD: Medical Voice Vision Question- Reason Answer Dataset
 
 Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
 
@@ -25,7 +25,7 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 | **Reasoning**   | `text_explanation` · `uncertainty` | **Gemini 2 Flash** Language               |
 | **QA flag**     | `needs_review` · `critic_notes`    | Gemini validation duo                     |
 
-> **Size:** 300 samples covering CT/MRI/X‑ray, stratified by modality & question type.
+> **Size:** 300 samples covering CT/MRI/X‑ray, stratified by modality & question type. (Number may increase after discussion with medical institutions)
 
 ---
 
