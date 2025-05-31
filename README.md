@@ -1,4 +1,4 @@
-# MVVQ-RAD: Medical Voice Vision Question- Reason Answer Dataset
+# MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset
 
 Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
 
@@ -239,7 +239,7 @@ Samples are processed completely by the pipeline, then reviewed through the web 
 
 ```bibtex
 @dataset{medvoiceqa_2025,
-  title   = {MedVoiceQAReasonDataset},
+  title   = {MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset},
   year    = {2025},
   url     = {https://github.com/whats2000/MedVoiceQAReasonDataset}
 }
