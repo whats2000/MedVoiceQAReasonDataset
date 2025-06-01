@@ -8,7 +8,6 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 
 - [x] Implement the annotation pipeline using LangGraph
 - [x] Implement the human verification UI
-- [ ] Publish the workshop paper for the pipeline (For [AgentX competition](https://rdi.berkeley.edu/agentx/))
 - [ ] Cooperate with medical institutions to validate the dataset
 - [ ] Publish the dataset on Hugging Face
 - [ ] Publish the full detailed paper with human validation results to ArXiv
@@ -233,6 +232,9 @@ Samples are processed completely by the pipeline, then reviewed through the web 
 
 * Code: MIT
 * Derived data: CC‑BY 4.0  (VQA‑RAD is CC0 1.0; please cite their paper.)
+
+> [!IMPORTANT]
+> **No Author-Verified Reports Exist**: Currently, there are no author-verified reports or publications for this dataset. Any reports claiming to be official documentation for this dataset should be considered fake. We will update this notice once official documentation becomes available.
 
 > [!NOTE]
 > The paper is still in progress, we will update the citation once it is available.
