@@ -207,6 +207,9 @@ Each Node appends `node_name` and `node_version` for full provenance.
 
 ## 🎯 Quality Targets
 
+> [!IMPORTANT]
+> **Dataset Not Yet Human-Reviewed**: This dataset has not been reviewed by medical professionals yet. Any reports claiming IoU scores or other quality metrics should provide their own verification by medical institutions. Without proper medical validation, any reported quality scores should be considered unverified and potentially fake.
+
 | Field              | Metric                   | Pass       |
 |--------------------|--------------------------|------------|
 | `visual_box`       | IoU vs. RSNA / human box | **> 0.50** |
