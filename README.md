@@ -63,14 +63,14 @@ flowchart TD
 
 ### 📊 Processing Details
 
-| Stage | Concurrency | Input | Output | Models/Tools |
-|-------|-------------|-------|--------|--------------|
-| **Loader** | Sequential | `sample_id` | `image_path`, `text_query`, `metadata` | DICOM2PNG converter |
-| **Segmentation** | **Parallel** | `image_path`, `text_query` | `visual_box` | Gemini 2 Flash Vision |
-| **ASR/TTS** | **Parallel** | `text_query`, `sample_id` | `speech_path`, `asr_text`, `quality_score` | Bark TTS + Whisper-L ASR |
-| **Explanation** | Sequential | All prior outputs | `text_explanation`, `uncertainty` | Gemini 2 Flash Language |
-| **Validation** | Sequential | All outputs + errors | `needs_review`, `critic_notes`, `quality_scores` | Custom validation logic |
-| **Human Review** | Manual | Validated samples | Final dataset | Streamlit UI interface |
+| Stage            | Concurrency  | Input                      | Output                                           | Models/Tools             |
+|------------------|--------------|----------------------------|--------------------------------------------------|--------------------------|
+| **Loader**       | Sequential   | `sample_id`                | `image_path`, `text_query`, `metadata`           | DICOM2PNG converter      |
+| **Segmentation** | **Parallel** | `image_path`, `text_query` | `visual_box`                                     | Gemini 2 Flash Vision    |
+| **ASR/TTS**      | **Parallel** | `text_query`, `sample_id`  | `speech_path`, `asr_text`, `quality_score`       | Bark TTS + Whisper-L ASR |
+| **Explanation**  | Sequential   | All prior outputs          | `text_explanation`, `uncertainty`                | Gemini 2 Flash Language  |
+| **Validation**   | Sequential   | All outputs + errors       | `needs_review`, `critic_notes`, `quality_scores` | Custom validation logic  |
+| **Human Review** | Manual       | Validated samples          | Final dataset                                    | Streamlit UI interface   |
 
 *✨ **Key Feature:** Segmentation and ASR/TTS nodes run in **parallel** after the Loader, reducing total processing time by ~40%.*
 

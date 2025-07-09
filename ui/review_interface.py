@@ -222,22 +222,32 @@ class MedVoiceQAReviewer:
                         else:
                             st.image(image, caption=f"Medical Image - {sample_id}", use_container_width=True)
 
-                        # Show bounding box details if available
-                        if visual_box:
+                        # Show bounding box details if available (either original or manual)
+                        manual_bbox = existing_review.get("manual_bbox")
+                        has_bbox_data = visual_box or manual_bbox
+                        
+                        if has_bbox_data:
                             with st.expander("🎯 Visual Localization Details & Manual Adjustment", expanded=False):
-                                bbox = visual_box.get("bounding_box", {})
-                                st.write("**Original AI Bounding Box Coordinates (normalized):**")
-                                col_orig1, col_orig2 = st.columns(2)
-                                with col_orig1:
-                                    st.write(f"• X: {bbox.get('x', 'N/A')}")
-                                    st.write(f"• Y: {bbox.get('y', 'N/A')}")
-                                with col_orig2:
-                                    st.write(f"• Width: {bbox.get('width', 'N/A')}")
-                                    st.write(f"• Height: {bbox.get('height', 'N/A')}")
+                                # Get bounding box from either original visual_box or empty dict as fallback
+                                bbox = visual_box.get("bounding_box", {}) if visual_box else {}
+                                
+                                if visual_box and bbox:
+                                    st.write("**Original AI Bounding Box Coordinates (normalized):**")
+                                    col_orig1, col_orig2 = st.columns(2)
+                                    with col_orig1:
+                                        st.write(f"• X: {bbox.get('x', 'N/A')}")
+                                        st.write(f"• Y: {bbox.get('y', 'N/A')}")
+                                    with col_orig2:
+                                        st.write(f"• Width: {bbox.get('width', 'N/A')}")
+                                        st.write(f"• Height: {bbox.get('height', 'N/A')}")
 
-                                confidence = visual_box.get("confidence")
-                                if confidence is not None:
-                                    st.metric("Confidence", f"{confidence:.2f}")
+                                    confidence = visual_box.get("confidence")
+                                    if confidence is not None:
+                                        st.metric("Confidence", f"{confidence:.2f}")
+                                elif manual_bbox:
+                                    st.info("📦 No original AI bounding box, but manual adjustment exists")
+                                else:
+                                    st.info("📦 No original AI bounding box available")
 
                                 st.divider()
 
@@ -247,7 +257,9 @@ class MedVoiceQAReviewer:
                                     "Adjust the bounding box coordinates if the AI localization is incorrect. All values should be between 0 and 1 (normalized coordinates).")
 
                                 # Get existing manual adjustments or use original values
-                                existing_bbox_edit = existing_review.get("manual_bbox", bbox)
+                                # Handle case where manual_bbox is null/None
+                                manual_bbox = existing_review.get("manual_bbox")
+                                existing_bbox_edit = manual_bbox if manual_bbox is not None else bbox
 
                                 # Handle reset functionality with unique widget keys
                                 reset_counter_key = f"reset_counter_{sample_idx}"
@@ -262,11 +274,17 @@ class MedVoiceQAReviewer:
                                     st.write("**⚙️ Coordinates:**")
 
                                     # Input controls with dynamic keys that change on reset
+                                    # Provide safe fallback values when no bbox data exists
+                                    safe_x = existing_bbox_edit.get('x') if existing_bbox_edit else bbox.get('x', 0.2) if bbox else 0.2
+                                    safe_y = existing_bbox_edit.get('y') if existing_bbox_edit else bbox.get('y', 0.2) if bbox else 0.2
+                                    safe_width = existing_bbox_edit.get('width') if existing_bbox_edit else bbox.get('width', 0.3) if bbox else 0.3
+                                    safe_height = existing_bbox_edit.get('height') if existing_bbox_edit else bbox.get('height', 0.3) if bbox else 0.3
+                                    
                                     manual_x = st.number_input(
                                         "X coordinate",
                                         min_value=0.0,
                                         max_value=1.0,
-                                        value=float(existing_bbox_edit.get('x', bbox.get('x', 0.0))),
+                                        value=float(safe_x),
                                         step=0.01,
                                         key=f"manual_x_{sample_idx}_{reset_counter}",
                                         help="Left edge of bounding box (0 = left edge, 1 = right edge)"
@@ -275,7 +293,7 @@ class MedVoiceQAReviewer:
                                         "Y coordinate",
                                         min_value=0.0,
                                         max_value=1.0,
-                                        value=float(existing_bbox_edit.get('y', bbox.get('y', 0.0))),
+                                        value=float(safe_y),
                                         step=0.01,
                                         key=f"manual_y_{sample_idx}_{reset_counter}",
                                         help="Top edge of bounding box (0 = top edge, 1 = bottom edge)"
@@ -284,7 +302,7 @@ class MedVoiceQAReviewer:
                                         "Width",
                                         min_value=0.01,
                                         max_value=1.0,
-                                        value=float(existing_bbox_edit.get('width', bbox.get('width', 0.1))),
+                                        value=float(safe_width),
                                         step=0.01,
                                         key=f"manual_width_{sample_idx}_{reset_counter}",
                                         help="Width of bounding box"
@@ -293,7 +311,7 @@ class MedVoiceQAReviewer:
                                         "Height",
                                         min_value=0.01,
                                         max_value=1.0,
-                                        value=float(existing_bbox_edit.get('height', bbox.get('height', 0.1))),
+                                        value=float(safe_height),
                                         step=0.01,
                                         key=f"manual_height_{sample_idx}_{reset_counter}",
                                         help="Height of bounding box"
@@ -306,23 +324,30 @@ class MedVoiceQAReviewer:
                                         st.warning("⚠️ Box extends beyond image height")
 
                                     # Check if manual coordinates differ from original
-                                    original_bbox = bbox
+                                    # Use safe fallback values for comparison
+                                    original_x = bbox.get('x', 0.2) if bbox else 0.2
+                                    original_y = bbox.get('y', 0.2) if bbox else 0.2  
+                                    original_width = bbox.get('width', 0.3) if bbox else 0.3
+                                    original_height = bbox.get('height', 0.3) if bbox else 0.3
+                                    
                                     coords_changed = (
-                                        manual_x != original_bbox.get('x', 0.0) or
-                                        manual_y != original_bbox.get('y', 0.0) or
-                                        manual_width != original_bbox.get('width', 0.1) or
-                                        manual_height != original_bbox.get('height', 0.1)
+                                        manual_x != original_x or
+                                        manual_y != original_y or
+                                        manual_width != original_width or
+                                        manual_height != original_height
                                     )
 
-                                    if coords_changed:
+                                    if coords_changed and bbox:
                                         st.info("📝 Modified from original")
+                                    elif not bbox:
+                                        st.info("📝 Manual bounding box (no original AI box)")
 
                                     # Show coordinate summary
                                     coord_summary = f"**Current:** X={manual_x:.3f}, Y={manual_y:.3f}, W={manual_width:.3f}, H={manual_height:.3f}"
                                     st.caption(coord_summary)
 
-                                    # Option to reset to original coordinates
-                                    if coords_changed:
+                                    # Option to reset to original coordinates (only if original exists)
+                                    if coords_changed and bbox:
                                         if st.button(f"🔄 Reset to Original",
                                                      key=f"reset_bbox_{sample_idx}_{reset_counter}"):
                                             # Increment the reset counter to force new widgets with original values
@@ -334,6 +359,9 @@ class MedVoiceQAReviewer:
                                     st.caption("Updates automatically as you adjust coordinates")
 
                                     # Always show the preview with current coordinates
+                                    # Handle confidence safely - get from visual_box if available
+                                    confidence = visual_box.get("confidence") if visual_box else None
+                                    
                                     manual_bbox_data = {
                                         "bounding_box": {
                                             "x": manual_x,
@@ -547,25 +575,30 @@ class MedVoiceQAReviewer:
                                        key=f"other_issue_{sample_idx}")
         # Save review button
         if st.button(f"Save Review for {sample_id}", key=f"save_{sample_idx}"):
-            # Get manual bounding box values
+            # Get the current reset counter to access the correct widget values
+            reset_counter_key = f"reset_counter_{sample_idx}"
+            reset_counter = st.session_state.get(reset_counter_key, 0)
+            
+            # Get manual bounding box values from current widget state
             manual_bbox = {
-                "x": st.session_state.get(f"manual_x_{sample_idx}",
-                                          visual_box.get("bounding_box", {}).get("x", 0.0)) if visual_box else 0.0,
-                "y": st.session_state.get(f"manual_y_{sample_idx}",
-                                          visual_box.get("bounding_box", {}).get("y", 0.0)) if visual_box else 0.0,
-                "width": st.session_state.get(f"manual_width_{sample_idx}",
-                                              visual_box.get("bounding_box", {}).get("width",
-                                                                                     0.1)) if visual_box else 0.1,
-                "height": st.session_state.get(f"manual_height_{sample_idx}",
-                                               visual_box.get("bounding_box", {}).get("height",
-                                                                                      0.1)) if visual_box else 0.1,
+                "x": st.session_state.get(f"manual_x_{sample_idx}_{reset_counter}", 0.2),
+                "y": st.session_state.get(f"manual_y_{sample_idx}_{reset_counter}", 0.2),
+                "width": st.session_state.get(f"manual_width_{sample_idx}_{reset_counter}", 0.3),
+                "height": st.session_state.get(f"manual_height_{sample_idx}_{reset_counter}", 0.3),
             }
 
             # Get edited explanation
             manual_explanation = st.session_state.get(f"edit_explanation_{sample_idx}", explanation)
 
             # Check if there were manual edits
-            bbox_manually_edited = visual_box and manual_bbox != visual_box.get("bounding_box", {})
+            # For bbox: compare with original if exists, otherwise consider any bbox as an edit
+            if visual_box and visual_box.get("bounding_box"):
+                original_bbox = visual_box["bounding_box"]
+                bbox_manually_edited = manual_bbox != original_bbox
+            else:
+                # If no original bbox, consider it manually edited if coordinates are set
+                bbox_manually_edited = True
+            
             explanation_manually_edited = manual_explanation != explanation
 
             self.review_data[sample_id] = {
