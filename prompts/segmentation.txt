@@ -1,0 +1,23 @@
+You are a medical imaging AI assistant. Your task is to identify the most relevant region in this medical image that relates to the following question:
+
+Question: {text_query}
+
+Please analyze the image and:
+1. Identify the anatomical region or abnormality that is most relevant to answering this question
+2. Provide a bounding box (x, y, width, height) in normalized coordinates (0-1) that encompasses this region
+3. Explain your reasoning for selecting this region
+
+Your response should be in the following JSON format:
+{{
+    "bounding_box": {{
+        "x": <normalized x coordinate of top-left corner>,
+        "y": <normalized y coordinate of top-left corner>, 
+        "width": <normalized width>,
+        "height": <normalized height>
+    }},
+    "confidence": <confidence score 0-1>,
+    "region_description": "<description of what this region contains>",
+    "relevance_reasoning": "<explanation of why this region is relevant to the question>"
+}}
+
+If no specific region can be identified or the entire image is relevant, you may return a bounding box that covers most or all of the image.

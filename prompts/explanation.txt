@@ -1,0 +1,30 @@
+You are an expert medical imaging specialist. Analyze this medical image and provide detailed reasoning.
+
+MEDICAL IMAGE QUERY: {query}
+
+VISUAL LOCALIZATION: The relevant region has been identified with the following bounding box:
+- Coordinates: {visual_box}
+
+Please provide:
+
+1. DETAILED MEDICAL REASONING:
+   - What anatomical structures are visible?
+   - What abnormalities or findings do you observe?
+   - How does the visual localization relate to the query?
+   - What differential diagnoses should be considered?
+   - What is your final assessment?
+
+2. REASONING CHAIN:
+   - Step 1: Initial observation
+   - Step 2: Feature analysis
+   - Step 3: Clinical correlation
+   - Step 4: Conclusion
+
+3. UNCERTAINTY ASSESSMENT:
+   - How confident are you in this assessment? (0.0 = very uncertain, 1.0 = very certain)
+   - What factors contribute to uncertainty?
+   - What additional information would improve confidence?
+
+Format your response as:
+REASONING: [detailed medical reasoning]
+UNCERTAINTY_SCORE: [float between 0.0 and 1.0]

@@ -6,11 +6,18 @@ Generates reasoning and uncertainty estimates using Gemini 2 Flash Language mode
 
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
 from google import genai
 from google.genai import types
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from prompts import PromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,39 +42,8 @@ class GeminiReasoningEngine:
         os.environ['GOOGLE_API_KEY'] = api_key
         self.client = genai.Client()
 
-        # Reasoning prompt template
-        self.reasoning_prompt = """
-You are an expert medical imaging specialist. Analyze this medical image and provide detailed reasoning.
-
-MEDICAL IMAGE QUERY: {query}
-
-VISUAL LOCALIZATION: The relevant region has been identified with the following bounding box:
-- Coordinates: {visual_box}
-
-Please provide:
-
-1. DETAILED MEDICAL REASONING:
-   - What anatomical structures are visible?
-   - What abnormalities or findings do you observe?
-   - How does the visual localization relate to the query?
-   - What differential diagnoses should be considered?
-   - What is your final assessment?
-
-2. REASONING CHAIN:
-   - Step 1: Initial observation
-   - Step 2: Feature analysis
-   - Step 3: Clinical correlation
-   - Step 4: Conclusion
-
-3. UNCERTAINTY ASSESSMENT:
-   - How confident are you in this assessment? (0.0 = very uncertain, 1.0 = very certain)
-   - What factors contribute to uncertainty?
-   - What additional information would improve confidence?
-
-Format your response as:
-REASONING: [detailed medical reasoning]
-UNCERTAINTY_SCORE: [float between 0.0 and 1.0]
-"""
+        # Initialize prompt manager
+        self.prompt_manager = PromptManager()
 
     @staticmethod
     def _load_image_for_genai(image_path: str) -> types.Part:
@@ -151,8 +127,48 @@ UNCERTAINTY_SCORE: [float between 0.0 and 1.0]
             # Format visual box information
             box_str = f"x={visual_box['bounding_box']['x']}, y={visual_box['bounding_box']['y']}, width={visual_box['bounding_box']['width']}, height={visual_box['bounding_box']['height']}"
 
+            # Get prompt from prompt manager
+            default_prompt = """You are an expert medical imaging specialist. Analyze this medical image and provide detailed reasoning.
+
+MEDICAL IMAGE QUERY: {query}
+
+VISUAL LOCALIZATION: The relevant region has been identified with the following bounding box:
+- Coordinates: {visual_box}
+
+Please provide:
+
+1. DETAILED MEDICAL REASONING:
+   - What anatomical structures are visible?
+   - What abnormalities or findings do you observe?
+   - How does the visual localization relate to the query?
+   - What differential diagnoses should be considered?
+   - What is your final assessment?
+
+2. REASONING CHAIN:
+   - Step 1: Initial observation
+   - Step 2: Feature analysis
+   - Step 3: Clinical correlation
+   - Step 4: Conclusion
+
+3. UNCERTAINTY ASSESSMENT:
+   - How confident are you in this assessment? (0.0 = very uncertain, 1.0 = very certain)
+   - What factors contribute to uncertainty?
+   - What additional information would improve confidence?
+
+Format your response as:
+REASONING: [detailed medical reasoning]
+UNCERTAINTY_SCORE: [float between 0.0 and 1.0]"""
+
+            # Get prompt from prompt manager with validation
+            required_variables = {"query", "visual_box"}
+            prompt_template = self.prompt_manager.get_prompt(
+                "explanation",
+                default_prompt,
+                required_variables
+            )
+
             # Prepare prompt
-            prompt = self.reasoning_prompt.format(
+            prompt = prompt_template.format(
                 query=text_query,
                 visual_box=box_str
             )

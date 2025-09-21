@@ -8,12 +8,19 @@ in medical images for question answering.
 import base64
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 from PIL import Image
 from google import genai
 from google.genai import types
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from prompts import PromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +65,9 @@ class GeminiVisionSegmenter:
 
         os.environ['GOOGLE_API_KEY'] = api_key
         self.client = genai.Client()
+        
+        # Initialize prompt manager
+        self.prompt_manager = PromptManager()
 
     def segment_image(self, image_path: str, text_query: str) -> Dict[str, Any]:
         """
@@ -145,8 +155,7 @@ class GeminiVisionSegmenter:
             logger.error(f"Failed to prepare image {image_path}: {e}")
             return None
 
-    @staticmethod
-    def _create_segmentation_prompt(text_query: str) -> str:
+    def _create_segmentation_prompt(self, text_query: str) -> str:
         """
         Create a prompt for visual localization.
         
@@ -156,8 +165,8 @@ class GeminiVisionSegmenter:
         Returns:
             Formatted prompt for Gemini Vision
         """
-        prompt = f"""
-You are a medical imaging AI assistant. Your task is to identify the most relevant region in this medical image that relates to the following question:
+        # Default prompt template
+        default_prompt = """You are a medical imaging AI assistant. Your task is to identify the most relevant region in this medical image that relates to the following question:
 
 Question: {text_query}
 
@@ -179,9 +188,18 @@ Your response should be in the following JSON format:
     "relevance_reasoning": "<explanation of why this region is relevant to the question>"
 }}
 
-If no specific region can be identified or the entire image is relevant, you may return a bounding box that covers most or all of the image.
-"""
-        return prompt
+If no specific region can be identified or the entire image is relevant, you may return a bounding box that covers most or all of the image."""
+        
+        # Get prompt from prompt manager with validation
+        required_variables = {"text_query"}
+        prompt_template = self.prompt_manager.get_prompt(
+            "segmentation",
+            default_prompt,
+            required_variables
+        )
+        
+        # Format the prompt with the text query
+        return prompt_template.format(text_query=text_query)
 
     def _call_gemini_vision(self, image_data: str, prompt: str) -> Tuple[str, Optional[Dict[str, Any]]]:
         """

@@ -6,11 +6,19 @@ Performs quality assessment and critic validation using Gemini models.
 
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import Dict, Any, Tuple
 
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from prompts import PromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -46,58 +54,15 @@ class GeminiValidationDuo:
         os.environ['GOOGLE_API_KEY'] = api_key
         self.client = genai.Client()
 
+        # Initialize prompt manager
+        self.prompt_manager = PromptManager()
+
         # Quality thresholds from registry.json
         self.quality_thresholds = {
             "speech_quality_min": 0.7,
             "uncertainty_max": 0.3,  # High uncertainty triggers review
             "explanation_min_length": 50
-        }  # Validation prompt template for structured output
-        self.validation_prompt = """
-You are a medical AI quality assurance specialist. Evaluate this complete medical image analysis pipeline output.
-
-ORIGINAL QUERY: {query}
-
-PIPELINE OUTPUTS:
-1. VISUAL LOCALIZATION: {visual_box}
-2. SPEECH SYNTHESIS QUALITY: {speech_quality}
-3. SPEECH RECOGNITION RESULT: "{asr_text}"
-4. MEDICAL REASONING: {explanation}
-5. UNCERTAINTY SCORE: {uncertainty}
-
-EVALUATION CRITERIA:
-1. VISUAL LOCALIZATION QUALITY:
-   - Are the bounding box coordinates reasonable?
-   - Does the localization seem relevant to the query?
-
-2. SPEECH PROCESSING QUALITY:
-   - Is the speech quality score acceptable (>0.7)?
-   - Does the ASR text match the original query?
-
-3. MEDICAL REASONING QUALITY:
-   - Is the reasoning medically sound and detailed?
-   - Does it properly address the query?
-   - Is the explanation clear and comprehensive?
-
-4. CONSISTENCY CHECK:
-   - Are all components internally consistent?
-   - Do the outputs align with each other?
-
-5. UNCERTAINTY ASSESSMENT:
-   - Is the uncertainty score reasonable?
-   - High uncertainty (>0.7) may indicate quality issues
-
-Provide a comprehensive assessment with:
-- needs_review: boolean indicating if human review is required
-- Quality scores (0.0-1.0) for each component
-- Detailed critic notes explaining your assessment
-
-Consider flagging for review if:
-- Visual localization seems irrelevant or has poor coordinates
-- Speech processing quality is below 0.7
-- Medical reasoning is unclear, too brief, or medically unsound
-- High uncertainty (>0.7) without clear justification
-- Inconsistencies between pipeline components
-"""
+        }
 
     @staticmethod
     def _load_image_for_genai(image_path: str) -> types.Part:
@@ -191,8 +156,62 @@ Consider flagging for review if:
                 speech_quality_score, uncertainty, text_explanation, visual_box
             )
 
+            # Get prompt from prompt manager
+            default_prompt = """You are a medical AI quality assurance specialist. Evaluate this complete medical image analysis pipeline output.
+
+ORIGINAL QUERY: {query}
+
+PIPELINE OUTPUTS:
+1. VISUAL LOCALIZATION: {visual_box}
+2. SPEECH SYNTHESIS QUALITY: {speech_quality}
+3. SPEECH RECOGNITION RESULT: "{asr_text}"
+4. MEDICAL REASONING: {explanation}
+5. UNCERTAINTY SCORE: {uncertainty}
+
+EVALUATION CRITERIA:
+1. VISUAL LOCALIZATION QUALITY:
+   - Are the bounding box coordinates reasonable?
+   - Does the localization seem relevant to the query?
+
+2. SPEECH PROCESSING QUALITY:
+   - Is the speech quality score acceptable (>0.7)?
+   - Does the ASR text match the original query?
+
+3. MEDICAL REASONING QUALITY:
+   - Is the reasoning medically sound and detailed?
+   - Does it properly address the query?
+   - Is the explanation clear and comprehensive?
+
+4. CONSISTENCY CHECK:
+   - Are all components internally consistent?
+   - Do the outputs align with each other?
+
+5. UNCERTAINTY ASSESSMENT:
+   - Is the uncertainty score reasonable?
+   - High uncertainty (>0.7) may indicate quality issues
+
+Provide a comprehensive assessment with:
+- needs_review: boolean indicating if human review is required
+- Quality scores (0.0-1.0) for each component
+- Detailed critic notes explaining your assessment
+
+Consider flagging for review if:
+- Visual localization seems irrelevant or has poor coordinates
+- Speech processing quality is below 0.7
+- Medical reasoning is unclear, too brief, or medically unsound
+- High uncertainty (>0.7) without clear justification
+- Inconsistencies between pipeline components"""
+
+            # Get prompt from prompt manager with validation
+            required_variables = {"query", "visual_box", "speech_quality", "asr_text", "explanation", "uncertainty"}
+            prompt_template = self.prompt_manager.get_prompt(
+                "validation",
+                default_prompt,
+                required_variables
+            )
+
             # Prepare validation prompt
-            prompt = self.validation_prompt.format(
+            prompt = prompt_template.format(
                 query=text_query,
                 visual_box=str(visual_box),
                 speech_quality=speech_quality_score,
