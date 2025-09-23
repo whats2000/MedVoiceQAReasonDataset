@@ -329,7 +329,7 @@ Consider flagging for review if:
         return ""  # No issues found
 
 
-def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, str | float | Dict[str, Any]]:
+def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     LangGraph node function for pipeline validation.
     
@@ -371,6 +371,8 @@ def run_validation(state: Dict[str, str | float | Dict[str, Any]]) -> Dict[str, 
                 **state,
                 "needs_review": True,
                 "critic_notes": f"Missing required inputs: {missing_inputs}",
+                "validation_failed": True,
+                "validation_error": f"Missing required inputs: {missing_inputs}",
                 "quality_scores": {
                     'visual_localization_quality': 0.0,
                     'speech_processing_quality': 0.0,

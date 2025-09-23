@@ -46,6 +46,8 @@ class PipelineState(TypedDict):
 
     # Segmentation outputs
     visual_box: Optional[Dict[str, Any]]
+    segmentation_failed: Optional[bool]
+    segmentation_error: Optional[str]
 
     # ASR/TTS outputs
     speech_path: Optional[str]
@@ -55,11 +57,15 @@ class PipelineState(TypedDict):
     # Explanation outputs
     text_explanation: Optional[str]
     uncertainty: Optional[float]
+    explanation_failed: Optional[bool]
+    explanation_error: Optional[str]
 
     # Validation outputs
     needs_review: Optional[bool]
     critic_notes: Optional[str]
     quality_scores: Optional[Dict[str, float]]
+    validation_failed: Optional[bool]
+    validation_error: Optional[str]
 
     # Node execution tracking
     loader_completed: Optional[bool]
@@ -142,6 +148,8 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
         return {
             "visual_box": result["visual_box"],
             "segmentation_completed": True,
+            "segmentation_failed": result.get("segmentation_failed", False),
+            "segmentation_error": result.get("segmentation_error"),
             "node_name": "segmentation",
             "node_version": "v1.0.0",
         }
@@ -221,6 +229,8 @@ def explanation_node(state: PipelineState) -> Dict[str, Any]:
             "text_explanation": result["text_explanation"],
             "uncertainty": result["uncertainty"],
             "explanation_completed": True,
+            "explanation_failed": result.get("explanation_failed", False),
+            "explanation_error": result.get("explanation_error"),
             "node_name": "explanation",
             "node_version": "v1.0.0",
         }
@@ -280,6 +290,8 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
             "critic_notes": result["critic_notes"],
             "quality_scores": result["quality_scores"],
             "validation_completed": True,
+            "validation_failed": result.get("validation_failed", False),
+            "validation_error": result.get("validation_error"),
             "pipeline_status": pipeline_status,
             "processing_end_time": datetime.now().isoformat(),
             "node_name": "validation",

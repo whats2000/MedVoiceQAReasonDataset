@@ -231,7 +231,9 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
             return {
                 **state,
                 "text_explanation": "Error: Missing required inputs for reasoning generation",
-                "uncertainty": 0.1
+                "uncertainty": 0.1,
+                "explanation_failed": True,
+                "explanation_error": "Missing required inputs: image_path, text_query, or visual_box"
             }
 
         # Check if the image file exists
@@ -240,7 +242,9 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
             return {
                 **state,
                 "text_explanation": f"Error: Image file not found: {image_path}",
-                "uncertainty": 0.1
+                "uncertainty": 0.1,
+                "explanation_failed": True,
+                "explanation_error": f"Image file not found: {image_path}"
             }
 
         # Initialize reasoning engine
@@ -266,7 +270,9 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
         return {
             **state,
             "text_explanation": f"Error in explanation generation: {str(e)}",
-            "uncertainty": 0.1
+            "uncertainty": 0.1,
+            "explanation_failed": True,
+            "explanation_error": str(e)
         }
 
 

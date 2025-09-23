@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, Tuple
 from PIL import Image
 from google import genai
 from google.genai import types
+from google.genai.types import GenerateContentConfig
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent
@@ -220,10 +221,10 @@ If no specific region can be identified or the entire image is relevant, you may
             )
 
             # Any other controls (temperature, top_p…) go here
-            generation_config = {
-                "response_mime_type": "application/json",
-                "response_schema": SegmentationResult,
-            }
+            generation_config = GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SegmentationResult,
+            )
 
             # Generate content using modern Gemini API
             response = self.client.models.generate_content(
@@ -268,6 +269,9 @@ def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:
             logger.info("Segmentation completed successfully")
         else:
             logger.warning("Segmentation completed but no visual box identified")
+            # Add failure marker when no visual box is found
+            segment_result["segmentation_failed"] = True
+            segment_result["segmentation_error"] = segment_result.get("error", "No visual localization found")
 
         return segment_result
 
@@ -277,6 +281,8 @@ def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:
         return {
             "visual_box": None,
             "error": str(e),
+            "segmentation_failed": True,
+            "segmentation_error": str(e),
             "segmenter": "GeminiVisionSegmenter",
             "segmenter_version": "v1.0.0",
             "model": os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'),

@@ -266,13 +266,44 @@ def run_pipeline(
                         "metadata": sample.get("metadata", {}),
                     })
 
-                    # Add to processed samples
-                    processed_samples.append({
-                        "sample_id": sample["sample_id"],
-                        "input": sample,
-                        "output": result,
-                        "status": "success"
-                    })
+                    # Check for node failure markers set by individual nodes
+                    sample_failed = False
+                    failure_reason = ""
+                    
+                    # Check for explicit failure markers from nodes
+                    if result.get("segmentation_failed"):
+                        sample_failed = True
+                        failure_reason = f"Segmentation failed: {result.get('segmentation_error', 'Unknown error')}"
+                    elif result.get("explanation_failed"):
+                        sample_failed = True
+                        failure_reason = f"Explanation failed: {result.get('explanation_error', 'Unknown error')}"
+                    elif result.get("validation_failed"):
+                        sample_failed = True
+                        failure_reason = f"Validation failed: {result.get('validation_error', 'Unknown error')}"
+                    elif result.get("pipeline_status") == "failed":
+                        sample_failed = True
+                        failure_reason = "Pipeline marked as failed"
+                    elif result.get("node_errors"):
+                        sample_failed = True
+                        errors = result.get("node_errors", {})
+                        failure_reason = f"Node errors: {', '.join([f'{k}: {v}' for k, v in errors.items()])}"
+                    
+                    # Add to appropriate samples list based on failure markers
+                    if sample_failed:
+                        failed_samples.append({
+                            "sample_id": sample["sample_id"],
+                            "input": sample,
+                            "output": result,
+                            "status": "failed",
+                            "error": failure_reason
+                        })
+                    else:
+                        processed_samples.append({
+                            "sample_id": sample["sample_id"],
+                            "input": sample,
+                            "output": result,
+                            "status": "success"
+                        })
 
                     progress.advance(task)
 
