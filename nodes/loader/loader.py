@@ -16,6 +16,7 @@ from PIL import Image
 import numpy as np
 
 from data.huggingface_loader import HuggingFaceVQARADLoader
+from models.workflow import SampleMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class VQARADLoader:
         sample_id: str,
         image_path: Optional[str] = None,
         text_query: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[SampleMetadata] = None
     ) -> Dict[str, Any]:
         """
         Load a VQA-RAD sample by ID or use provided data.
@@ -325,7 +326,7 @@ def run_loader(
     sample_id: str,
     image_path: Optional[str] = None,
     text_query: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: Optional[SampleMetadata] = None,
     output_dir: str = "runs/current"
 ) -> Dict[str, Any]:
     """

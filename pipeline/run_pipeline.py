@@ -124,7 +124,7 @@ def run_pipeline(
         if not dry_run:
             raise ValueError("Missing required environment variables")
 
-    # Create run directory
+    # Create the run directory
     run_dir = create_run_directory()
     console.print(f"[green]Run directory: {run_dir}[/green]")
 
@@ -217,7 +217,7 @@ def run_pipeline(
                 "samples": samples
             }
         else:
-            # Load samples from created dataset
+            # Load samples from the created dataset
             metadata_file = Path(input_data) / "sample_metadata.json"
             if not metadata_file.exists():
                 raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
@@ -288,7 +288,7 @@ def run_pipeline(
                         errors = result.get("node_errors", {})
                         failure_reason = f"Node errors: {', '.join([f'{k}: {v}' for k, v in errors.items()])}"
                     
-                    # Add to appropriate samples list based on failure markers
+                    # Add to the appropriate samples list based on failure markers
                     if sample_failed:
                         failed_samples.append({
                             "sample_id": sample["sample_id"],
@@ -340,7 +340,7 @@ def run_pipeline(
 
         if failed_samples:
             console.print(f"[yellow]  - Failed samples: {len(failed_samples)}[/yellow]")
-            for failed in failed_samples[:3]:  # Show first 3 failures
+            for failed in failed_samples[:3]:  # Show the first 3 failures
                 console.print(f"    - {failed['sample_id']}: {failed['error']}")
             if len(failed_samples) > 3:
                 console.print(f"    ... and {len(failed_samples) - 3} more")

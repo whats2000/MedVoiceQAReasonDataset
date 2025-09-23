@@ -121,7 +121,7 @@ Repository = "https://github.com/whats2000/MedVoiceQAReasonDataset"
 Issues = "https://github.com/whats2000/MedVoiceQAReasonDataset/issues"
 
 [tool.setuptools]
-packages = ["pipeline", "nodes", "data", "scripts", "ui"]
+packages = ["pipeline", "nodes", "models", "data", "scripts", "ui"]
 
 [tool.black]
 line-length = 88

@@ -13,12 +13,18 @@ Key features:
 
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import cast
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
-from typing_extensions import TypedDict
 
+from models.workflow import (
+    PipelineState,
+    LoaderNodeResult, LoaderResult, SegmentationNodeResult, SegmentationSuccessResult, SegmentationErrorResult,
+    ASRTTSNodeResult, ASRTTSSuccessResult, ASRTTSErrorResult, ExplanationNodeResult, ExplanationSuccessResult,
+    ExplanationErrorResult, PipelineInfo, ValidationErrorResult, ValidationNodeResult, ValidationSuccessResult,
+    SampleMetadata,
+)
 from nodes.asr_tts import run_asr_tts
 from nodes.explanation import run_explanation
 from nodes.loader import run_loader
@@ -28,63 +34,9 @@ from nodes.validation import run_validation
 logger = logging.getLogger(__name__)
 
 
-class PipelineState(TypedDict):
+def loader_node(state: PipelineState) -> LoaderNodeResult:
     """
-    State schema for the MedVoiceQA pipeline.
-
-    Each node adds its outputs to this state, following the contracts
-    defined in the registry.json and README.
-    """
-    # Input fields
-    sample_id: str
-    run_dir: Optional[str]  # Directory where pipeline outputs should be saved
-
-    # Loader outputs
-    image_path: Optional[str]
-    text_query: str
-    metadata: Dict[str, Any]
-
-    # Segmentation outputs
-    visual_box: Optional[Dict[str, Any]]
-    segmentation_failed: Optional[bool]
-    segmentation_error: Optional[str]
-
-    # ASR/TTS outputs
-    speech_path: Optional[str]
-    asr_text: Optional[str]
-    speech_quality_score: Optional[float]
-
-    # Explanation outputs
-    text_explanation: Optional[str]
-    uncertainty: Optional[float]
-    explanation_failed: Optional[bool]
-    explanation_error: Optional[str]
-
-    # Validation outputs
-    needs_review: Optional[bool]
-    critic_notes: Optional[str]
-    quality_scores: Optional[Dict[str, float]]
-    validation_failed: Optional[bool]
-    validation_error: Optional[str]
-
-    # Node execution tracking
-    loader_completed: Optional[bool]
-    segmentation_completed: Optional[bool]
-    asr_tts_completed: Optional[bool]
-    explanation_completed: Optional[bool]
-    validation_completed: Optional[bool]
-    node_errors: Dict[str, str]
-
-    # Additional context
-    ground_truth_answer: Optional[str]
-    processing_start_time: Optional[str]
-    processing_end_time: Optional[str]
-    pipeline_status: Optional[str]  # "completed", "failed", "needs_review"
-
-
-def loader_node(state: PipelineState) -> Dict[str, Any]:
-    """
-    Load VQA-RAD sample and convert DICOM to PNG if needed.
+    Load the VQA-RAD sample and convert DICOM to PNG if needed.
 
     Consumes: sample_id
     Produces: image_path, text_query, metadata
@@ -96,16 +48,17 @@ def loader_node(state: PipelineState) -> Dict[str, Any]:
             sample_id=state["sample_id"],
             image_path=state.get("image_path"),
             text_query=state.get("text_query"),
-            metadata=state.get("metadata", {})
-        )  # Update completed nodes
-        return {
+            metadata=cast(SampleMetadata, state.get("metadata", {}))
+        )
+        # Update completed nodes
+        return cast(LoaderResult, {
             "image_path": result["image_path"],
             "text_query": result["text_query"],
             "metadata": result["metadata"],
             "loader_completed": True,
             "node_name": "loader",
             "node_version": "v1.0.0",
-        }
+        })
 
     except Exception as e:
         logger.error(f"Loader node failed: {e}")
@@ -113,12 +66,12 @@ def loader_node(state: PipelineState) -> Dict[str, Any]:
         node_errors = state.get("node_errors", {})
         node_errors["loader"] = str(e)
 
-        return {
+        return cast(LoaderResult, {
             "node_errors": node_errors,
-        }
+        })
 
 
-def segmentation_node(state: PipelineState) -> Dict[str, Any]:
+def segmentation_node(state: PipelineState) -> SegmentationNodeResult:
     """
     Perform visual localization using Gemini Vision.
 
@@ -130,12 +83,12 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
     try:
         if not state.get("image_path"):
             logger.warning("No image available for segmentation")
-            return {
+            return cast(SegmentationSuccessResult, {
                 "visual_box": None,
                 "segmentation_completed": True,
                 "node_name": "segmentation",
                 "node_version": "v1.0.0",
-            }
+            })
 
         # Cast to string to satisfy the type checker
         image_path = str(state["image_path"])
@@ -145,14 +98,14 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
             text_query=state["text_query"]
         )
 
-        return {
+        return cast(SegmentationSuccessResult, {
             "visual_box": result["visual_box"],
             "segmentation_completed": True,
             "segmentation_failed": result.get("segmentation_failed", False),
             "segmentation_error": result.get("segmentation_error"),
             "node_name": "segmentation",
             "node_version": "v1.0.0",
-        }
+        })
 
     except Exception as e:
         logger.error(f"Segmentation node failed: {e}")
@@ -160,13 +113,13 @@ def segmentation_node(state: PipelineState) -> Dict[str, Any]:
         node_errors = state.get("node_errors", {})
         node_errors["segmentation"] = str(e)
 
-        return {
+        return cast(SegmentationErrorResult, {
             "visual_box": None,
             "node_errors": node_errors,
-        }
+        })
 
 
-def asr_tts_node(state: PipelineState) -> Dict[str, Any]:
+def asr_tts_node(state: PipelineState) -> ASRTTSNodeResult:
     """
     Generate speech from the text and perform ASR validation.
 
@@ -184,14 +137,14 @@ def asr_tts_node(state: PipelineState) -> Dict[str, Any]:
             sample_id=state["sample_id"],
             output_dir=output_dir
         )  # Update completed nodes
-        return {
+        return cast(ASRTTSSuccessResult, {
             "speech_path": result["speech_path"],
             "asr_text": result["asr_text"],
             "speech_quality_score": result["speech_quality_score"],
             "asr_tts_completed": True,
             "node_name": "asr_tts",
             "node_version": "v1.0.0",
-        }
+        })
 
     except Exception as e:
         logger.error(f"ASR/TTS node failed: {e}")
@@ -199,15 +152,15 @@ def asr_tts_node(state: PipelineState) -> Dict[str, Any]:
         node_errors = state.get("node_errors", {})
         node_errors["asr_tts"] = str(e)
 
-        return {
+        return cast(ASRTTSErrorResult, {
             "speech_path": None,
             "asr_text": None,
             "speech_quality_score": None,
             "node_errors": node_errors,
-        }
+        })
 
 
-def explanation_node(state: PipelineState) -> Dict[str, Any]:
+def explanation_node(state: PipelineState) -> ExplanationNodeResult:
     """
     Generate reasoning and uncertainty using Gemini.
 
@@ -225,7 +178,7 @@ def explanation_node(state: PipelineState) -> Dict[str, Any]:
                 "ground_truth_answer": state.get("ground_truth_answer", "")
             }
         )  # Update completed nodes
-        return {
+        return cast(ExplanationSuccessResult, {
             "text_explanation": result["text_explanation"],
             "uncertainty": result["uncertainty"],
             "explanation_completed": True,
@@ -233,7 +186,7 @@ def explanation_node(state: PipelineState) -> Dict[str, Any]:
             "explanation_error": result.get("explanation_error"),
             "node_name": "explanation",
             "node_version": "v1.0.0",
-        }
+        })
 
     except Exception as e:
         logger.error(f"Explanation node failed: {e}")
@@ -241,14 +194,14 @@ def explanation_node(state: PipelineState) -> Dict[str, Any]:
         node_errors = state.get("node_errors", {})
         node_errors["explanation"] = str(e)
 
-        return {
+        return cast(ExplanationErrorResult, {
             "text_explanation": None,
             "uncertainty": None,
             "node_errors": node_errors,
-        }
+        })
 
 
-def validation_node(state: PipelineState) -> Dict[str, Any]:
+def validation_node(state: PipelineState) -> ValidationNodeResult:
     """
     Validate quality and mark pipeline completion.
 
@@ -285,7 +238,7 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
         else:
             pipeline_status = "completed"
 
-        return {
+        return cast(ValidationSuccessResult, {
             "needs_review": needs_review,
             "critic_notes": result["critic_notes"],
             "quality_scores": result["quality_scores"],
@@ -296,7 +249,7 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
             "processing_end_time": datetime.now().isoformat(),
             "node_name": "validation",
             "node_version": "v1.0.0",
-        }
+        })
 
     except Exception as e:
         logger.error(f"Validation node failed: {e}")
@@ -304,14 +257,14 @@ def validation_node(state: PipelineState) -> Dict[str, Any]:
         node_errors = state.get("node_errors", {})
         node_errors["validation"] = str(e)
 
-        return {
+        return cast(ValidationErrorResult, {
             "needs_review": True,
             "critic_notes": f"Validation failed: {e}",
             "quality_scores": {},
             "pipeline_status": "failed",
             "processing_end_time": datetime.now().isoformat(),
             "node_errors": node_errors,
-        }
+        })
 
 
 def create_medvoice_pipeline() -> CompiledStateGraph:
@@ -329,7 +282,7 @@ def create_medvoice_pipeline() -> CompiledStateGraph:
     Returns:
         Compiled LangGraph StateGraph ready for execution
     """
-    # Create state graph
+    # Create the state graph
     graph_builder = StateGraph(PipelineState)
 
     # Add nodes
@@ -357,7 +310,7 @@ def create_medvoice_pipeline() -> CompiledStateGraph:
     return main_pipeline
 
 
-def get_pipeline_info() -> Dict[str, Any]:
+def get_pipeline_info() -> PipelineInfo:
     """
     Get information about the pipeline structure and node versions.
 
