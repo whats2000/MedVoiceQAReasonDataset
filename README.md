@@ -9,9 +9,11 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 - [x] Implement the annotation pipeline using LangGraph
 - [x] Implement the human verification UI
 - [x] Publish the workshop paper for the pipeline (For [AgentX competition](https://rdi.berkeley.edu/agentx/))
+- [x] Run the full 300-sample pipeline
+- [x] Release the paper reported dataset. Look at section [3.5 · (Optional) Download Pre-generated Raw Data](#35--optional-download-pre-generated-raw-data) for details.
+- [ ] Publish the full detailed paper
 - [ ] Cooperate with medical institutions to validate the dataset
 - [ ] Publish the dataset on Hugging Face
-- [ ] Publish the full detailed paper with human validation results to ArXiv
 
 ---
 
@@ -215,29 +217,12 @@ Each Node appends `node_name` and `node_version` for full provenance.
 
 ---
 
-## 🎯 Quality Targets
-
-> [!IMPORTANT]
-> **Dataset Not Yet Human-Reviewed**: This dataset has not been reviewed by medical professionals yet. Any reports claiming IoU scores or other quality metrics should provide their own verification by medical institutions. Without proper medical validation, any reported quality scores should be considered unverified and potentially fake.
-
-| Field              | Metric                   | Pass       |
-|--------------------|--------------------------|------------|
-| `visual_box`       | IoU vs. RSNA / human box | **> 0.50** |
-| `text_explanation` | BERTScore F1             | **> 0.85** |
-| Consistency        | 5× self‑consistency      | **≥ 80%**  |
-| Overall            | `needs_review = false`   | **≥ 80%**  |
-
-Samples are processed completely by the pipeline, then reviewed through the web UI interface.
-
----
-
-## 🔄 Update Models in Five Steps
+## 🔄 Update Models in Four Steps
 
 1. Train or fine‑tune the new model.
 2. Wrap it to match the Node I/O JSON schema.
-3. Register version in `registry.json`.
-4. Edit `run_pipeline.py` to use the new version.
-5. Re‑run tests; if metrics pass → merge.
+3. Edit `run_pipeline.py` to use the new version.
+4. Re‑run tests; if metrics pass → merge.
 
 ---
 
