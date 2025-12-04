@@ -186,7 +186,7 @@ class PipelineState(TypedDict):
     State schema for the MedVoiceQA pipeline.
 
     Each node adds its outputs to this state, following the contracts
-    defined in the registry.json and README.
+    defined in the README.
     """
     # Input fields
     sample_id: str

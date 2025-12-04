@@ -57,7 +57,7 @@ class GeminiValidationDuo:
         # Initialize prompt manager
         self.prompt_manager = PromptManager()
 
-        # Quality thresholds from registry.json
+        # Quality thresholds
         self.quality_thresholds = {
             "speech_quality_min": 0.7,
             "uncertainty_max": 0.3,  # High uncertainty triggers review
