@@ -8,7 +8,7 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 
 - [x] Implement the annotation pipeline using LangGraph
 - [x] Implement the human verification UI
-- [ ] Publish the workshop paper for the pipeline (For [AgentX competition](https://rdi.berkeley.edu/agentx/))
+- [x] Publish the workshop paper for the pipeline (For [AgentX competition](https://rdi.berkeley.edu/agentx/))
 - [ ] Cooperate with medical institutions to validate the dataset
 - [ ] Publish the dataset on Hugging Face
 - [ ] Publish the full detailed paper with human validation results to ArXiv
@@ -171,24 +171,10 @@ The interface opens at `http://localhost:8501` where you can:
 │   ├── review_interface.py   # Streamlit app for sample review
 │   ├── launch.py            # UI launcher script
 │   └── README.md            # UI documentation
-├── registry.json             # lists every Node impl, version, resources
 ├── runs/                     # immutable artefacts  (git‑ignored)
 ├── tests/                    # pytest script
 └── README.md                 # this file
 ```
-
----
-
-## ⚙️ Node Registry & Hot‑Swap
-
-* **registry.json** – declares every Node implementation, its semantic version, resource tags, maintainer.
-* To swap a model:
-
-  1. Add / update entry in `registry.json`.
-  2. Point `run_pipeline.py` to the new `node_version`.
-  3. Run CI (unit tests, 10‑sample smoke test, metric‑drift guard ±5 %).
-
-No YAML involved—configuration is pure **Python + JSON**, making edits IDE‑friendly.
 
 ---
 
