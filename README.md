@@ -1,5 +1,9 @@
 # MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset
 
+> **Official Implementation** of the paper:  
+> **"MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset: A Comprehensive Multimodal Medical AI Dataset with Speech, Visual Localization, and Explainable Reasoning"**  
+> 📄 *Poster at **The 30th TAAI Conference*** | 📎 [**Paper (PDF)**](paper/MVVQ-RAD_TAAI2025.pdf)
+
 Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) into a multi‑modal, explainable medical‑QA mini‑corpus (speech ✚ bounding box ✚ reasoning)
 
 ---
@@ -232,13 +236,15 @@ Each Node appends `node_name` and `node_version` for full provenance.
 * Derived data: CC‑BY 4.0  (VQA‑RAD is CC0 1.0; please cite their paper.)
 
 > [!NOTE]
-> The paper is still in progress, we will update the citation once it is available.
+> The paper is to be published at **The 30th TAAI Conference**. We will update the citation once the paper is officially released.
 
 ```bibtex
-@dataset{medvoiceqa_2025,
-  title   = {MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset},
-  year    = {2025},
-  url     = {https://github.com/whats2000/MedVoiceQAReasonDataset}
+@inproceedings{mvvqrad2025,
+  title     = {MVVQ-RAD: Medical Voice Vision Question-Reason Answer Dataset: A Comprehensive Multimodal Medical AI Dataset with Speech, Visual Localization, and Explainable Reasoning},
+  author    = {Hu, Hsiang-Wei and Wang, Pei-Shan and Wu, Ren-Di and Chen, Li-Ju and Luo, Zih-Jia},
+  booktitle = {Proceedings of the 30th Conference on Technologies and Applications of Artificial Intelligence (TAAI)},
+  year      = {2025},
+  note      = {Poster, Official Publication Pending}
 }
 ```
 
