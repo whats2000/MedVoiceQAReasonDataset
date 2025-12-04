@@ -19,13 +19,13 @@ Transform [VQA‑RAD](https://huggingface.co/datasets/flaviagiammarino/vqa-rad) 
 
 ## ⭐️ What’s inside?
 
-| Modality        | Fields                             | Source models/tools                       |
-|-----------------|------------------------------------|-------------------------------------------|
-| **Image**       | `image` (PNG)                      | VQA‑RAD DICOM → PNG via **dicom2png**     |
-| **Speech**      | `speech_input` (WAV) · `asr_text`  | **Bark** (TTS) → **Na0s Whisper‑L** (ASR) |
-| **Visual loc.** | `visual_box`                       | **Gemini 2 Flash** Vision (bbox‑only)     |
-| **Reasoning**   | `text_explanation` · `uncertainty` | **Gemini 2 Flash** Language               |
-| **QA flag**     | `needs_review` · `critic_notes`    | Gemini validation duo                     |
+| Modality        | Fields                             | Source models/tools                           |
+|-----------------|------------------------------------|-----------------------------------------------|
+| **Image**       | `image` (PNG)                      | VQA‑RAD DICOM → PNG via **dicom2png**         |
+| **Speech**      | `speech_path` (WAV) · `asr_text`   | **Bark** (TTS) → **large-v3 (whisper)** (ASR) |
+| **Visual loc.** | `visual_box`                       | **gemini-2.5-flash**                          |
+| **Reasoning**   | `text_explanation` · `uncertainty` | **gemini-2.5-flash**                          |
+| **QA flag**     | `needs_review` · `critic_notes`    | **gemini-2.5-flash**                          |
 
 > **Size:** 300 samples covering CT/MRI/X‑ray, stratified by modality & question type. (Number may increase after discussion with medical institutions)
 
@@ -65,14 +65,14 @@ flowchart TD
 
 ### 📊 Processing Details
 
-| Stage            | Concurrency  | Input                      | Output                                           | Models/Tools             |
-|------------------|--------------|----------------------------|--------------------------------------------------|--------------------------|
-| **Loader**       | Sequential   | `sample_id`                | `image_path`, `text_query`, `metadata`           | DICOM2PNG converter      |
-| **Segmentation** | **Parallel** | `image_path`, `text_query` | `visual_box`                                     | Gemini 2 Flash Vision    |
-| **ASR/TTS**      | **Parallel** | `text_query`, `sample_id`  | `speech_path`, `asr_text`, `quality_score`       | Bark TTS + Whisper-L ASR |
-| **Explanation**  | Sequential   | All prior outputs          | `text_explanation`, `uncertainty`                | Gemini 2 Flash Language  |
-| **Validation**   | Sequential   | All outputs + errors       | `needs_review`, `critic_notes`, `quality_scores` | Custom validation logic  |
-| **Human Review** | Manual       | Validated samples          | Final dataset                                    | Streamlit UI interface   |
+| Stage            | Concurrency  | Input                      | Output                                            | Models/Tools                |
+|------------------|--------------|----------------------------|---------------------------------------------------|-----------------------------|
+| **Loader**       | Sequential   | `sample_id`                | `image_path`, `text_query`, `metadata`            | Hugging Face Dataset loader |
+| **Segmentation** | **Parallel** | `image_path`, `text_query` | `visual_box`                                      | Gemini 2.5 Flash            |
+| **ASR/TTS**      | **Parallel** | `text_query`, `sample_id`  | `speech_path`, `asr_text`, `speech_quality_score` | Bark TTS + Whisper-L ASR    |
+| **Explanation**  | Sequential   | All prior outputs          | `text_explanation`, `uncertainty`                 | Gemini 2.5 Flash            |
+| **Validation**   | Sequential   | All outputs + errors       | `needs_review`, `critic_notes`, `quality_scores`  | Gemini 2.5 Flash            |
+| **Human Review** | Manual       | Validated samples          | Final dataset                                     | Streamlit UI interface      |
 
 *✨ **Key Feature:** Segmentation and ASR/TTS nodes run in **parallel** after the Loader, reducing total processing time by ~40%.*
 

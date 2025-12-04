@@ -50,7 +50,7 @@ class GeminiVisionSegmenter:
     bounding box coordinates.
     """
 
-    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')):
+    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')):
         """
         Initialize the Gemini Vision segmenter.
         
@@ -257,13 +257,13 @@ def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:
     logger.info(f"Starting segmentation for image: {Path(image_path).name}")
 
     try:
-        segmenter = GeminiVisionSegmenter(model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'))
+        segmenter = GeminiVisionSegmenter(model=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'))
         segment_result = segmenter.segment_image(image_path, text_query)
 
         # Add segmentation metadata
         segment_result["segmenter"] = "GeminiVisionSegmenter"
         segment_result["segmenter_version"] = "v1.0.0"
-        segment_result["model"] = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+        segment_result["model"] = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 
         if segment_result["visual_box"]:
             logger.info("Segmentation completed successfully")
@@ -285,7 +285,7 @@ def run_segmentation(image_path: str, text_query: str) -> Dict[str, Any]:
             "segmentation_error": str(e),
             "segmenter": "GeminiVisionSegmenter",
             "segmenter_version": "v1.0.0",
-            "model": os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'),
+            "model": os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'),
             "image_processed": False
         }
 

@@ -60,7 +60,7 @@ def create_run_directory() -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Create hash based on configuration
-    config_str = f"{timestamp}_{os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')}"
+    config_str = f"{timestamp}_{os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')}"
     config_hash = hashlib.md5(config_str.encode()).hexdigest()[:8]
 
     run_dir = Path("runs") / f"{timestamp}-{config_hash}"
@@ -80,7 +80,7 @@ def save_manifest(run_dir: Path, config: Dict[str, Any], results: Dict[str, Any]
             "working_directory": str(Path.cwd()),
         },
         "models": {
-            "gemini": os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+            "gemini": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
             "whisper": os.getenv("WHISPER_MODEL", "large-v3"),
             "bark": os.getenv("BARK_MODEL", "suno/bark"),
         }

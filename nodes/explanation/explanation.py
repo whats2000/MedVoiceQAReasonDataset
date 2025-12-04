@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 
 class GeminiReasoningEngine:
     """
-    Generates detailed medical reasoning and uncertainty estimates using Gemini 2 Flash.
+    Generates detailed medical reasoning and uncertainty estimates using Gemini 2.5 Flash.
     
     This component analyzes medical images, queries, and visual localization data
     to produce explainable reasoning chains and uncertainty quantification.
     """
 
-    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')):
+    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')):
         """Initialize the Gemini reasoning engine."""
         self.model = model
 
@@ -248,7 +248,7 @@ def run_explanation(state: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         # Initialize reasoning engine
-        reasoning_engine = GeminiReasoningEngine(model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'))
+        reasoning_engine = GeminiReasoningEngine(model=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'))
 
         # Generate reasoning
         explanation, uncertainty = reasoning_engine.generate_reasoning(

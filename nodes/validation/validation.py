@@ -36,13 +36,13 @@ class ValidationResult(BaseModel):
 
 class GeminiValidationDuo:
     """
-    Quality assessment and critic validation using Gemini 2 Flash.
+    Quality assessment and critic validation using Gemini 2.5 Flash.
     
     This component acts as a quality gatekeeper, evaluating all pipeline outputs
     and determining if human review is needed.
     """
 
-    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')):
+    def __init__(self, model: str = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')):
         """Initialize the Gemini validation system."""
         self.model = model
 
@@ -383,7 +383,7 @@ def run_validation(state: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         # Initialize validation system
-        validator = GeminiValidationDuo(model=os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'))
+        validator = GeminiValidationDuo(model=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'))
 
         # Perform validation
         needs_review, critic_notes, quality_scores = validator.validate_pipeline_output(
