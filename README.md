@@ -117,6 +117,29 @@ Create an `.env` file with your Gemini & Hugging Face keys (see [.env.example](.
 uv run .\data\huggingface_loader.py
 ```
 
+### 3.5 · (Optional) Download Pre-generated Raw Data
+
+If you want to skip running the full pipeline and use our pre-generated data directly, you can download it from Google Drive:
+
+1. Download the data from: [Google Drive Link](https://drive.google.com/file/d/1mi6FlkmUHG_qkrOmSUklVFol07EYdpnr/view?usp=sharing)
+2. Extract the downloaded archive to the `runs/` folder
+
+After extraction, your folder structure should look like:
+```
+runs/
+├── 20250528_113033-35f94652/
+│   ├── manifest.json
+│   ├── results.json
+│   └── audio/
+├── current/
+│   ├── hf_data/
+│   │   └── images/
+│   └── images/
+```
+
+> [!TIP]
+> This is the same data reported in our paper. It allows you to explore the dataset, run the statistics notebook, and use the Human Verification UI without needing to run the full pipeline.
+
 ### 4 · Verify installation
 
 ```bash
